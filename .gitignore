@@ -11,3 +11,4 @@ android/keystore.properties
 legacy/PhoneDrop.app/
 legacy/PhoneDrop.apk
 release/
+.testlogs/

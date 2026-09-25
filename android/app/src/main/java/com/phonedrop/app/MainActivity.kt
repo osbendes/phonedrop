@@ -71,11 +71,41 @@ class MainActivity : Activity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
         intent?.data?.let { pairWith(it.toString()) }
+        runDiagnostics(intent)
+    }
+
+    /** `adb shell am start -n <pkg>/com.phonedrop.app.MainActivity -a com.osbendes.phonedrop.DIAG_BLE` */
+    private fun runDiagnostics(i: Intent?) {
+        if (!link.prefs.paired) return
+        when (i?.action) {
+            "com.osbendes.phonedrop.DIAG_BLE" -> thread {
+                val report = DirectLink(this, link.prefs).probe()
+                runOnUiThread { Toast.makeText(this, report.trim(), Toast.LENGTH_LONG).show() }
+            }
+            // Full handshake incl. hotspot; if the Mac is on Wi-Fi it answers "on-wifi" and nothing switches
+            "com.osbendes.phonedrop.DIAG_DIRECT" -> thread {
+                val d = DirectLink(this, link.prefs)
+                val result = try {
+                    val (h, p) = d.connect { android.util.Log.i("PhoneDrop", "diag: " + getString(it)) }
+                    val c = com.phonedrop.app.core.MacClient("http://$h:$p", link.prefs.key!!)
+                    val name = c.hello("diag").optString("name")
+                    runCatching { c.post("/api/direct/end", timeoutMs = 3000) }
+                    "ready: $h:$p, hello from $name"
+                } catch (e: DirectLink.DirectException) {
+                    "failed: " + getString(e.reason)
+                } finally {
+                    d.close()
+                }
+                android.util.Log.i("PhoneDrop", "diag: $result")
+                runOnUiThread { Toast.makeText(this, result, Toast.LENGTH_LONG).show() }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.data?.let { pairWith(it.toString()) }
+        runDiagnostics(intent)
     }
 
     override fun onResume() {
@@ -328,6 +358,22 @@ class MainActivity : Activity() {
         if (reachable != true || json == null) { note(R.string.outbox_offline); return }
         val files = json.getJSONArray("files")
         if (files.length() == 0) { note(R.string.outbox_empty); return }
+        if (files.length() > 1) {
+            box.addView(Button(this).apply {
+                setText(getString(R.string.outbox_download_all, files.length()))
+                setBackgroundResource(R.drawable.bg_btn_primary)
+                setTextColor(0xFFFFFFFF.toInt())
+                isAllCaps = false
+                layoutParams = LinearLayout.LayoutParams(-1, (52 * d).toInt()).apply { bottomMargin = (8 * d).toInt() }
+                setOnClickListener {
+                    for (k in 0 until files.length()) {
+                        val f = files.getJSONObject(k)
+                        TransferService.download(this@MainActivity, f.getString("id"), f.getString("name"), f.getLong("size"))
+                    }
+                    Toast.makeText(this@MainActivity, getString(R.string.toast_downloading_all, files.length()), Toast.LENGTH_SHORT).show()
+                }
+            })
+        }
         for (k in 0 until files.length()) {
             val f = files.getJSONObject(k)
             val id = f.getString("id")

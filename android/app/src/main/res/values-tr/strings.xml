@@ -18,6 +18,8 @@
     <string name="action_clear">Temizle</string>
     <string name="action_refresh">Yenile</string>
     <string name="outbox_hint">Mac\'te “Telefona Gönder” alanına bıraktığın dosyalar burada görünür. Dokunarak İndirilenler/PhoneDrop klasörüne kaydedebilirsin.</string>
+    <string name="outbox_download_all">Tümünü indir (%1$d)</string>
+    <string name="toast_downloading_all">%1$d dosya indiriliyor</string>
     <string name="outbox_empty">İndirilecek dosya yok.</string>
     <string name="outbox_offline">Mac\'e ulaşılamıyor.</string>
     <string name="outbox_unpaired">Önce Mac ile eşleştir.</string>

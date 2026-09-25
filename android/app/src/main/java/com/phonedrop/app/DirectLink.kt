@@ -20,6 +20,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
+import android.util.Log
 import com.phonedrop.app.core.Crypto
 import java.io.IOException
 import java.util.UUID
@@ -34,6 +35,7 @@ import org.json.JSONObject
  */
 class DirectLink(ctx: Context, private val prefs: Prefs) {
     companion object {
+        private const val TAG = "PhoneDrop"
         private const val SUFFIX = "-9D4B-4F2A-8E61-50484F4E4544"
         val SERVICE: UUID = UUID.fromString("C0DE0001$SUFFIX")
         val INFO: UUID = UUID.fromString("C0DE0002$SUFFIX")
@@ -92,6 +94,7 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
             try {
                 gatt.open()
                 val kid = gatt.read(INFO).decodeToString()
+                Log.i(TAG, "direct: ${device.address} kid=$kid (ours=${prefs.kid})")
                 if (kid != prefs.kid) continue
 
                 progress(R.string.direct_starting)
@@ -101,11 +104,15 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
 
                 progress(R.string.direct_joining)
                 val deadline = System.currentTimeMillis() + 45_000
+                var idleReads = 0
                 while (System.currentTimeMillis() < deadline) {
                     Thread.sleep(1000)
                     val st = JSONObject(crypto.open(gatt.read(STATUS), "pd2 ble status").decodeToString())
+                    Log.i(TAG, "direct: status ${st.optString("st")} ${st.optString("e")}")
                     when (st.optString("st")) {
                         "ready" -> return st.getString("ip") to st.getInt("p")
+                        // The Mac went back to idle without reaching "ready": the join was abandoned
+                        "idle" -> if (++idleReads >= 3) { close(); throw DirectException(R.string.direct_failed) }
                         "error" -> {
                             close()
                             throw DirectException(
@@ -118,12 +125,57 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
             } catch (e: DirectException) {
                 throw e
             } catch (e: Exception) {
-                // Try the next advertiser
+                Log.w(TAG, "direct: ${device.address} failed: $e")
             } finally {
                 gatt.close()
             }
         }
         throw DirectException(R.string.status_searching)
+    }
+
+    /**
+     * Diagnostic: scans, connects and reads INFO from every PhoneDrop Mac nearby, without touching
+     * Wi-Fi. Returns a human-readable report (also written to logcat).
+     */
+    @SuppressLint("MissingPermission")
+    fun probe(): String {
+        val out = StringBuilder()
+        fun say(s: String) { Log.i(TAG, "probe: $s"); out.appendLine(s) }
+        if (!hasPermissions(app)) return "no permission".also { say(it) }
+        val adapter = app.getSystemService(BluetoothManager::class.java)?.adapter ?: return "no adapter".also { say(it) }
+        if (!adapter.isEnabled) return "bluetooth off".also { say(it) }
+        val found = scan(adapter.bluetoothLeScanner, 10_000)
+        say("found ${found.size} advertiser(s)")
+        // Unfiltered scan: shows whether the Mac advertises at all and what it puts in the packet
+        val all = LinkedHashMap<String, ScanResult>()
+        val cb = object : ScanCallback() {
+            override fun onScanResult(type: Int, r: ScanResult) { synchronized(all) { all[r.device.address] = r } }
+        }
+        adapter.bluetoothLeScanner.startScan(null, ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), cb)
+        Thread.sleep(6000)
+        runCatching { adapter.bluetoothLeScanner.stopScan(cb) }
+        synchronized(all) {
+            say("unfiltered: ${all.size} advertiser(s)")
+            for (r in all.values) {
+                val rec = r.scanRecord ?: continue
+                val apple = rec.getManufacturerSpecificData(0x004C)
+                if (rec.deviceName != null || rec.serviceUuids != null || apple != null) {
+                    say("  ${r.device.address} rssi=${r.rssi} name=${rec.deviceName} uuids=${rec.serviceUuids} apple=${apple?.joinToString("") { "%02x".format(it) }}")
+                }
+            }
+        }
+        for (d in found) {
+            val g = Gatt(d)
+            try {
+                g.open()
+                say("${d.address}: kid=${g.read(INFO).decodeToString()} ours=${prefs.kid}")
+            } catch (e: Exception) {
+                say("${d.address}: $e")
+            } finally {
+                g.close()
+            }
+        }
+        return out.toString()
     }
 
     /** Stops the hotspot. The Mac notices and returns to its usual Wi-Fi. */
@@ -170,8 +222,14 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
         val found = LinkedHashMap<String, BluetoothDevice>()
         val cb = object : ScanCallback() {
             override fun onScanResult(type: Int, result: ScanResult) {
-                synchronized(found) { found[result.device.address] = result.device }
+                synchronized(found) {
+                    if (found.put(result.device.address, result.device) == null) {
+                        Log.i(TAG, "direct: saw ${result.device.address} rssi=${result.rssi}")
+                    }
+                }
             }
+
+            override fun onScanFailed(errorCode: Int) { Log.w(TAG, "direct: scan failed $errorCode") }
         }
         val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(SERVICE)).build()
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
@@ -198,14 +256,36 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
         private inner class Read(val uuid: UUID, val value: ByteArray?, val status: Int)
         private inner class Written(val status: Int)
 
+        /**
+         * Connects with the usual Android workarounds: retry (the first attempt often fails with
+         * status 133, especially on Xiaomi and Samsung), deliver callbacks on the main looper, and
+         * pause briefly before MTU negotiation and service discovery.
+         */
         fun open() {
-            gatt = device.connectGatt(app, false, this, BluetoothDevice.TRANSPORT_LE)
-            await { it == "connected" }
-            gatt!!.requestMtu(247)
-            await(3000, optional = true) { it == "mtu" }
-            gatt!!.discoverServices()
-            await { it == "services" }
-            if (gatt!!.getService(SERVICE) == null) throw IOException("no service")
+            var lastError: Exception? = null
+            for (attempt in 1..3) {
+                events.clear()
+                try {
+                    gatt = device.connectGatt(app, false, this, BluetoothDevice.TRANSPORT_LE,
+                        BluetoothDevice.PHY_LE_1M_MASK, Handler(Looper.getMainLooper()))
+                    await(12_000) { it == "connected" }
+                    Log.i(TAG, "direct: ${device.address} connected (attempt $attempt)")
+                    Thread.sleep(600)
+                    gatt!!.requestMtu(247)
+                    await(3000, optional = true) { it == "mtu" }
+                    Thread.sleep(200)
+                    if (!gatt!!.discoverServices()) throw IOException("discoverServices refused")
+                    await(15_000) { it == "services" }
+                    if (gatt!!.getService(SERVICE) == null) throw IOException("service missing")
+                    return
+                } catch (e: Exception) {
+                    lastError = e
+                    Log.w(TAG, "direct: ${device.address} attempt $attempt: $e (last status $lastStatus)")
+                    close()
+                    Thread.sleep(800L * attempt)
+                }
+            }
+            throw lastError ?: IOException("connect failed")
         }
 
         private fun characteristic(uuid: UUID): BluetoothGattCharacteristic =
@@ -250,7 +330,10 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
             }
         }
 
+        @Volatile var lastStatus = 0
+
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+            lastStatus = status
             events.add(if (status == BluetoothGatt.GATT_SUCCESS && newState == BluetoothProfile.STATE_CONNECTED) "connected" else "disconnected")
         }
 

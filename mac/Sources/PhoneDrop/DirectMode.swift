@@ -1,6 +1,9 @@
 import CoreBluetooth
 import CryptoKit
 import Foundation
+import os
+
+private let log = Logger(subsystem: "com.osbendes.phonedrop", category: "direct")
 
 /// Direct mode (docs/PROTOCOL.md): a Bluetooth LE handshake that makes the Mac join the phone's
 /// local-only hotspot when there's no shared network.
@@ -23,13 +26,26 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     private var status: [String: Any] = ["st": "idle"]
     private var joinedSSID: String?
 
+    private var watchdog: DispatchSourceTimer?
+
     func start() {
         manager = CBPeripheralManager(delegate: self, queue: q)
+        // macOS can stop advertising (sleep, Bluetooth restarts); restart it if that happens
+        let t = DispatchSource.makeTimerSource(queue: q)
+        t.schedule(deadline: .now() + 15, repeating: 15)
+        t.setEventHandler { [weak self] in
+            guard let self, let p = self.manager, p.state == .poweredOn, !p.isAdvertising else { return }
+            log.info("advertising stopped; restarting")
+            self.peripheralManagerDidUpdateState(p)
+        }
+        t.resume()
+        watchdog = t
     }
 
     // MARK: CBPeripheralManagerDelegate
 
     func peripheralManagerDidUpdateState(_ p: CBPeripheralManager) {
+        log.info("state \(p.state.rawValue, privacy: .public) authorization \(CBManager.authorization.rawValue, privacy: .public)")
         guard p.state == .poweredOn else { return }
         let info = CBMutableCharacteristic(type: Self.infoUUID, properties: [.read], value: nil, permissions: [.readable])
         let join = CBMutableCharacteristic(type: Self.joinUUID, properties: [.write], value: nil, permissions: [.writeable])
@@ -41,12 +57,20 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     }
 
     func peripheralManager(_ p: CBPeripheralManager, didAdd service: CBService, error: Error?) {
-        guard error == nil else { return NSLog("PhoneDrop BLE: \(error!)") }
+        guard error == nil else { return log.error("add service: \(error!.localizedDescription, privacy: .public)") }
         p.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [Self.serviceUUID],
                             CBAdvertisementDataLocalNameKey: "PhoneDrop"])
     }
 
+    func peripheralManagerDidStartAdvertising(_ p: CBPeripheralManager, error: Error?) {
+        if let error { log.error("advertising failed: \(error.localizedDescription, privacy: .public)") }
+        else { log.info("advertising") }
+    }
+
+    func peripheralManager(_ p: CBPeripheralManager, central: CBCentral, didSubscribeTo c: CBCharacteristic) {}
+
     func peripheralManager(_ p: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
+        log.info("read \(request.characteristic.uuid.uuidString, privacy: .public) offset \(request.offset)")
         let value: Data
         switch request.characteristic.uuid {
         case Self.infoUUID: value = Data(PDCrypto.kid(key()).utf8)
@@ -70,6 +94,7 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
             data.append(v)
         }
         p.respond(to: first, withResult: .success)
+        log.info("join request, \(data.count) bytes")
         handleJoin(data)
     }
 
@@ -92,6 +117,7 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
               let obj = try? JSONSerialization.jsonObject(with: plain) as? [String: Any],
               let ssid = obj["s"] as? String, let pass = obj["p"] as? String,
               let t = (obj["t"] as? NSNumber)?.doubleValue, abs(Date().timeIntervalSince1970 - t) < 300 else {
+            log.error("join request didn't open or is stale")
             return setStatus(["st": "error", "e": "bad-request"])
         }
         guard let iface = WiFi.interface() else { return setStatus(["st": "error", "e": "no-wifi-hardware"]) }
@@ -99,6 +125,7 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
         let alreadyDirect = joinedSSID != nil
         lock.unlock()
         if !alreadyDirect, WiFi.ipv4(iface) != nil, !allowOnWiFi() {
+            log.info("refusing: Mac is on Wi-Fi")
             return setStatus(["st": "error", "e": "on-wifi"])
         }
         setStatus(["st": "joining"])
@@ -109,33 +136,43 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
         lock.lock(); joinedSSID = ssid; lock.unlock()
         DispatchQueue.main.async { self.onStateChange?(ssid) }
         let before = WiFi.ipv4(iface)
-        let out = WiFi.run(["-setairportnetwork", iface, ssid, pass])
-        if out.localizedCaseInsensitiveContains("error") || out.localizedCaseInsensitiveContains("could not") {
-            NSLog("PhoneDrop direct: join failed: \(out)")
+        // The hotspot has just been started; the Mac may need a few scans before it sees it
+        var joined = false
+        for attempt in 1...8 {
+            let out = WiFi.run(["-setairportnetwork", iface, ssid, pass])
+            if !out.localizedCaseInsensitiveContains("error") && !out.localizedCaseInsensitiveContains("could not") {
+                joined = true
+                break
+            }
+            log.info("join attempt \(attempt) failed: \(out.trimmingCharacters(in: .whitespacesAndNewlines), privacy: .public)")
+            Thread.sleep(forTimeInterval: 2.5)
+        }
+        guard joined else {
             setStatus(["st": "error", "e": "join-failed"])
-            end()
+            end(keepStatus: true)
             return
         }
         // Wait for the phone's DHCP to give us an address
         for i in 0..<60 {
             // Ignore the old network's address unless it's still the same after a few seconds
             if let ip = WiFi.ipv4(iface), ip != before || i >= 10 {
+                log.info("joined, ip \(ip, privacy: .public)")
                 setStatus(["st": "ready", "ip": ip, "p": Int(port())])
                 return
             }
             Thread.sleep(forTimeInterval: 0.5)
         }
         setStatus(["st": "error", "e": "no-address"])
-        end()
+        end(keepStatus: true)
     }
 
     /// The phone is done: forget its hotspot so macOS goes back to the usual Wi-Fi.
-    func end() {
+    func end(keepStatus: Bool = false) {
         lock.lock()
         let ssid = joinedSSID
         joinedSSID = nil
         lock.unlock()
-        setStatus(["st": "idle"])
+        if !keepStatus { setStatus(["st": "idle"]) }
         guard let ssid, let iface = WiFi.interface() else { return }
         _ = WiFi.run(["-removepreferredwirelessnetwork", iface, ssid])
         DispatchQueue.main.async { self.onStateChange?(nil) }

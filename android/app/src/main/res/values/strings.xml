@@ -20,6 +20,8 @@
     <string name="action_clear">Clear</string>
     <string name="action_refresh">Refresh</string>
     <string name="outbox_hint">Files you drop under “Send to Phone” on your Mac show up here. Tap one to save it to Downloads/PhoneDrop.</string>
+    <string name="outbox_download_all">Download all (%1$d)</string>
+    <string name="toast_downloading_all">Downloading %1$d files</string>
     <string name="outbox_empty">Nothing to download.</string>
     <string name="outbox_offline">Can\'t reach your Mac.</string>
     <string name="outbox_unpaired">Pair with your Mac first.</string>
