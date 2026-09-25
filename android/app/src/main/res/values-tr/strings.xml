@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="share_label">Mac\'e gönder</string>
+
+    <string name="mac_not_paired">Henüz Mac eşleşmedi</string>
+    <string name="mac_not_paired_hint">Mac\'ine PhoneDrop\'u kur, sonra kodunu okut.</string>
+    <string name="mac_connected">● Bağlı</string>
+    <string name="mac_offline">Bulunamadı · PhoneDrop Mac\'te açık mı?</string>
+    <string name="mac_searching">Mac aranıyor…</string>
+    <string name="btn_pair">Mac ile eşleştir</string>
+    <string name="btn_change">Değiştir</string>
+    <string name="btn_pick_gallery">Fotoğraf ve video seç</string>
+    <string name="btn_pick_files">Dosya seç</string>
+    <string name="tip_share">İpucu: Galeri\'de videoları seç › Paylaş › PhoneDrop.</string>
+    <string name="hdr_transfers">AKTARIMLAR</string>
+    <string name="hdr_from_mac">MAC\'TEN GELENLER</string>
+    <string name="action_stop">Durdur</string>
+    <string name="action_clear">Temizle</string>
+    <string name="action_refresh">Yenile</string>
+    <string name="outbox_hint">Mac\'te “Telefona Gönder” alanına bıraktığın dosyalar burada görünür. Dokunarak İndirilenler/PhoneDrop klasörüne kaydedebilirsin.</string>
+    <string name="outbox_empty">İndirilecek dosya yok.</string>
+    <string name="outbox_offline">Mac\'e ulaşılamıyor.</string>
+    <string name="outbox_unpaired">Önce Mac ile eşleştir.</string>
+    <string name="battery_title">Ekran kapalıyken de aktarım sürsün</string>
+    <string name="battery_text">Xiaomi gibi bazı telefonlar pil tasarrufu için arka plandaki aktarımı durdurur. PhoneDrop\'un pil kullanımını “Kısıtlama yok” olarak ayarla.</string>
+    <string name="battery_btn">Uygulama ayarlarını aç</string>
+
+    <string name="pair_dialog_title">Mac ile eşleştir</string>
+    <string name="pair_dialog_msg">1. Mac\'ine PhoneDrop\'u kur ve aç.\n\n2. Mac\'in menü çubuğundaki PhoneDrop simgesine tıkla.\n\n3. “Kodu okut”a dokun ve telefonunu QR koda tut.\n\nTelefon ve Mac aynı Wi-Fi ağında olmalı.</string>
+    <string name="pair_scan">Kodu okut</string>
+    <string name="pair_get_mac">Mac uygulamasını indir</string>
+    <string name="pair_unpair">Eşleşmeyi kaldır</string>
+    <string name="cancel">Vazgeç</string>
+    <string name="unpair_confirm">%1$s unutulsun mu? İstediğin zaman yeniden eşleştirebilirsin.</string>
+
+    <string name="st_waiting">Sırada · %1$s</string>
+    <string name="st_active">%1$s / %2$s</string>
+    <string name="st_resumed"> · kaldığı yerden</string>
+    <string name="st_done_up">✓ Gönderildi · %1$s</string>
+    <string name="st_done_down">✓ İndirilenler\'e kaydedildi · %1$s</string>
+    <string name="st_failed">Hata: %1$s</string>
+    <string name="st_cancelled">Durduruldu</string>
+
+    <string name="status_searching">Mac aranıyor… PhoneDrop Mac\'te açık mı?</string>
+    <string name="status_retry">Bağlantı koptu, yeniden deneniyor…</string>
+    <string name="status_mac_error">Mac yanıt vermedi, yeniden deneniyor…</string>
+    <string name="err_read">Dosya okunamadı</string>
+    <string name="err_short">Dosya beklenenden kısa</string>
+    <string name="err_unpaired">Mac\'te eşleştirme sıfırlanmış. Yeniden eşleştir.</string>
+    <string name="err_time_limit">Android\'in arka plan süre sınırı doldu</string>
+    <string name="err_disk">Dosya kaydedilemedi</string>
+
+    <string name="toast_sending_one">Mac\'e gönderiliyor…</string>
+    <string name="toast_sending_many">%1$d dosya Mac\'e gönderiliyor…</string>
+    <string name="toast_no_files">Gönderilecek dosya yok</string>
+    <string name="toast_pair_first">Önce PhoneDrop\'u Mac ile eşleştir</string>
+    <string name="toast_paired">%1$s ile eşleşti</string>
+    <string name="toast_paired_offline">Eşleşti. %1$s şu an ulaşılamıyor.</string>
+    <string name="toast_bad_qr">Bu bir PhoneDrop kodu değil. Mac\'teki PhoneDrop menüsündeki kodu okut.</string>
+    <string name="toast_scanner_unavailable">QR okuyucu kullanılamıyor. Kodu kamera uygulamasıyla okut.</string>
+    <string name="toast_downloading">İndiriliyor: %1$s</string>
+
+    <string name="notif_channel_transfers">Aktarımlar</string>
+    <string name="notif_channel_done">Tamamlanan aktarımlar</string>
+    <string name="notif_title">Aktarılıyor · %1$d/%2$d</string>
+    <string name="notif_preparing">Hazırlanıyor…</string>
+    <string name="notif_left">kaldı</string>
+    <string name="notif_sent_one">%1$s Mac\'e gönderildi</string>
+    <string name="notif_sent_many">%1$d dosya aktarıldı</string>
+    <string name="notif_saved_one">%1$s İndirilenler\'e kaydedildi</string>
+    <string name="notif_mixed">%1$d tamamlandı, %2$d başarısız</string>
+    <string name="notif_failed">Aktarım başarısız</string>
+
+    <string name="eta_s">%1$d sn</string>
+    <string name="eta_ms">%1$d dk %2$d sn</string>
+    <string name="eta_hm">%1$d sa %2$d dk</string>
+</resources>

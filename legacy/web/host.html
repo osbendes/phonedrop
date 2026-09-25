@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhoneDrop</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --fg:#14161a; --mute:#6b7280; --line:#e5e7eb; --acc:#2563eb; --ok:#16a34a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b21; --fg:#eef0f3; --mute:#9aa1ad; --line:#2a2f38; --acc:#3b82f6; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 -apple-system,system-ui,sans-serif; background:var(--bg); color:var(--fg); padding:32px 16px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+  h1 { font-size:24px; margin:0; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--mute); margin:28px 0 10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; }
+  .connect { display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
+  #qr { background:#fff; padding:10px; border-radius:12px; line-height:0; }
+  #qr svg { width:220px; height:220px; }
+  .steps { flex:1; min-width:240px; }
+  .steps ol { padding-left:20px; margin:8px 0 14px; }
+  .url { font:13px ui-monospace,Menlo,monospace; word-break:break-all; color:var(--mute); }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:10px; padding:8px 14px; cursor:pointer; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  .t { padding:12px 0; border-top:1px solid var(--line); }
+  .t:first-child { border-top:0; padding-top:0; }
+  .row { display:flex; justify-content:space-between; gap:12px; align-items:baseline; }
+  .name { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .meta { font-size:13px; color:var(--mute); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin-top:8px; }
+  .bar i { display:block; height:100%; background:var(--acc); transition:width .4s; }
+  .empty { color:var(--mute); margin:0; }
+  a.lnk { color:var(--acc); cursor:pointer; font-size:13px; }
+  #off { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📲 PhoneDrop</h1>
+    <button id="quit">Kapat</button>
+  </header>
+
+  <div class="card connect">
+    <div id="qr"></div>
+    <div class="steps">
+      <b>Telefonu bağla</b>
+      <ol>
+        <li>Telefon ve Mac aynı Wi-Fi ağında olsun.</li>
+        <li>Telefonun kamerasıyla QR kodu okut.</li>
+        <li>Açılan sayfada <i>Mac'e Dosya Gönder</i>'e dokun.</li>
+      </ol>
+      <p class="meta" style="white-space:normal">İpucu: Sayfayı telefonda yer imlerine ekle ya da "Ana ekrana ekle" de. Bir dahaki sefere QR gerekmez.</p>
+      <div class="url" id="url"></div>
+    </div>
+  </div>
+
+  <h2>Şu an gelenler</h2>
+  <div class="card" id="active"><p class="empty">Aktarım yok.</p></div>
+
+  <h2>Alınanlar</h2>
+  <div class="card" id="history"><p class="empty">Henüz dosya alınmadı.</p></div>
+
+  <h2>Klasörler</h2>
+  <div class="btns">
+    <button class="primary" id="openDir">Alınanlar klasörünü aç</button>
+    <button id="openOut">"Telefona Gönder" klasörünü aç</button>
+  </div>
+  <p class="meta" id="dir" style="margin-top:8px"></p>
+
+  <div class="card" id="off" style="margin-top:24px"><b>PhoneDrop kapalı.</b> Tekrar başlatmak için uygulamayı yeniden aç.</div>
+</div>
+
+<script src="/static/qrcode.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function human(n) {
+  if (n < 1024) return n + ' B';
+  const u = ['KB','MB','GB','TB']; let i = -1;
+  do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+  return n.toFixed(n < 10 ? 2 : 1) + ' ' + u[i];
+}
+let lastUrl = '';
+function drawQR(url) {
+  if (url === lastUrl) return;
+  lastUrl = url;
+  $('#url').textContent = url;
+  if (typeof qrcode !== 'function') { $('#qr').style.display = 'none'; return; }
+  const q = qrcode(0, 'M'); q.addData(url); q.make();
+  $('#qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+}
+const post = p => fetch(p, { method: 'POST' });
+
+async function poll() {
+  try {
+    const s = await (await fetch('/api/status')).json();
+    drawQR(s.url);
+    $('#dir').textContent = 'Kayıt yeri: ' + s.saveDir;
+    $('#active').innerHTML = s.active.length ? s.active.map(t => {
+      const pct = t.size ? t.received / t.size * 100 : 100;
+      return `<div class="t"><div class="row"><span class="name">${esc(t.name)}</span>
+        <span class="meta">${t.speed > 1 ? human(t.speed) + '/s' : 'bekleniyor…'}</span></div>
+        <div class="row"><span class="meta">${human(t.received)} / ${human(t.size)}</span><span class="meta">%${pct.toFixed(0)}</span></div>
+        <div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div></div>`;
+    }).join('') : '<p class="empty">Aktarım yok.</p>';
+    $('#history').innerHTML = s.history.length ? s.history.map(h =>
+      `<div class="t"><div class="row"><span class="name">✓ ${esc(h.name)}</span>
+        <span class="meta">${human(h.size)} · ${new Date(h.time * 1000).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}
+        · <a class="lnk" data-name="${esc(h.name)}">Finder'da göster</a></span></div></div>`).join('')
+      : '<p class="empty">Henüz dosya alınmadı.</p>';
+    $('#off').style.display = 'none';
+  } catch (e) {
+    $('#off').style.display = 'block';
+  }
+}
+$('#history').onclick = e => {
+  const a = e.target.closest('a.lnk');
+  if (a) post('/api/host/reveal?name=' + encodeURIComponent(a.dataset.name));
+};
+$('#openDir').onclick = () => post('/api/host/open');
+$('#openOut').onclick = () => post('/api/host/outbox');
+$('#quit').onclick = async () => {
+  if (!confirm('PhoneDrop kapatılsın mı? Devam eden aktarımlar duraklar (sonra kaldığı yerden sürer).')) return;
+  await post('/api/host/quit').catch(() => {});
+  $('#off').style.display = 'block';
+};
+poll();
+setInterval(poll, 800);
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">PhoneDrop</string>
+    <string name="share_label">Send to Mac</string>
+
+    <!-- Main screen -->
+    <string name="mac_not_paired">No Mac paired yet</string>
+    <string name="mac_not_paired_hint">Install PhoneDrop on your Mac, then scan its code.</string>
+    <string name="mac_connected">● Connected</string>
+    <string name="mac_offline">Not found · Is PhoneDrop running on your Mac?</string>
+    <string name="mac_searching">Looking for your Mac…</string>
+    <string name="btn_pair">Pair with Mac</string>
+    <string name="btn_change">Change</string>
+    <string name="btn_pick_gallery">Choose photos &amp; videos</string>
+    <string name="btn_pick_files">Choose files</string>
+    <string name="tip_share">Tip: in your gallery, select videos › Share › PhoneDrop.</string>
+    <string name="hdr_transfers">TRANSFERS</string>
+    <string name="hdr_from_mac">FROM YOUR MAC</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="outbox_hint">Files you drop under “Send to Phone” on your Mac show up here. Tap one to save it to Downloads/PhoneDrop.</string>
+    <string name="outbox_empty">Nothing to download.</string>
+    <string name="outbox_offline">Can\'t reach your Mac.</string>
+    <string name="outbox_unpaired">Pair with your Mac first.</string>
+    <string name="battery_title">Keep transfers running with the screen off</string>
+    <string name="battery_text">Some phones, such as Xiaomi, stop background transfers to save battery. Set PhoneDrop\'s battery usage to “No restrictions”.</string>
+    <string name="battery_btn">Open app settings</string>
+
+    <!-- Pairing -->
+    <string name="pair_dialog_title">Pair with your Mac</string>
+    <string name="pair_dialog_msg">1. Install PhoneDrop on your Mac and open it.\n\n2. Click the PhoneDrop icon in the Mac\'s menu bar.\n\n3. Tap “Scan code” and point your phone at the QR code.\n\nYour phone and Mac need to be on the same Wi-Fi network.</string>
+    <string name="pair_scan">Scan code</string>
+    <string name="pair_get_mac">Get the Mac app</string>
+    <string name="pair_unpair">Unpair</string>
+    <string name="cancel">Cancel</string>
+    <string name="unpair_confirm">Forget %1$s? You can pair again at any time.</string>
+
+    <!-- Transfer rows -->
+    <string name="st_waiting">Queued · %1$s</string>
+    <string name="st_active">%1$s / %2$s</string>
+    <string name="st_resumed"> · resumed</string>
+    <string name="st_done_up">✓ Sent · %1$s</string>
+    <string name="st_done_down">✓ Saved to Downloads · %1$s</string>
+    <string name="st_failed">Failed: %1$s</string>
+    <string name="st_cancelled">Stopped</string>
+
+    <!-- Status and errors -->
+    <string name="status_searching">Looking for your Mac… Is PhoneDrop open on it?</string>
+    <string name="status_retry">Connection lost, retrying…</string>
+    <string name="status_mac_error">Your Mac didn\'t respond, retrying…</string>
+    <string name="err_read">Couldn\'t read the file</string>
+    <string name="err_short">File is shorter than expected</string>
+    <string name="err_unpaired">Pairing was reset on the Mac. Pair again.</string>
+    <string name="err_time_limit">Android\'s background time limit was reached</string>
+    <string name="err_disk">Couldn\'t save the file</string>
+
+    <!-- Toasts -->
+    <string name="toast_sending_one">Sending to your Mac…</string>
+    <string name="toast_sending_many">Sending %1$d files to your Mac…</string>
+    <string name="toast_no_files">Nothing to send</string>
+    <string name="toast_pair_first">Pair PhoneDrop with your Mac first</string>
+    <string name="toast_paired">Paired with %1$s</string>
+    <string name="toast_paired_offline">Paired. %1$s isn\'t reachable right now.</string>
+    <string name="toast_bad_qr">That\'s not a PhoneDrop code. Scan the code in the PhoneDrop menu on your Mac.</string>
+    <string name="toast_scanner_unavailable">The QR scanner isn\'t available. Scan the code with your camera app instead.</string>
+    <string name="toast_downloading">Downloading %1$s</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_transfers">Transfers</string>
+    <string name="notif_channel_done">Completed transfers</string>
+    <string name="notif_title">Transferring · %1$d/%2$d</string>
+    <string name="notif_preparing">Preparing…</string>
+    <string name="notif_left">left</string>
+    <string name="notif_sent_one">%1$s sent to your Mac</string>
+    <string name="notif_sent_many">%1$d files transferred</string>
+    <string name="notif_saved_one">%1$s saved to Downloads</string>
+    <string name="notif_mixed">%1$d done, %2$d failed</string>
+    <string name="notif_failed">Transfer failed</string>
+
+    <!-- Durations -->
+    <string name="eta_s">%1$d s</string>
+    <string name="eta_ms">%1$d min %2$d s</string>
+    <string name="eta_hm">%1$d h %2$d min</string>
+</resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>PhoneDrop</string>
+    <key>CFBundleDisplayName</key><string>PhoneDrop</string>
+    <key>CFBundleIdentifier</key><string>com.osbendes.phonedrop.mac</string>
+    <key>CFBundleExecutable</key><string>PhoneDrop</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>1.0.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>tr</string></array>
+    <key>LSMinimumSystemVersion</key><string>13.0</string>
+    <key>LSUIElement</key><true/>
+    <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 PhoneDrop</string>
+    <key>NSLocalNetworkUsageDescription</key><string>PhoneDrop receives files from your phone over your local Wi-Fi network.</string>
+    <key>NSBonjourServices</key><array><string>_phonedrop._tcp</string></array>
+</dict>
+</plist>

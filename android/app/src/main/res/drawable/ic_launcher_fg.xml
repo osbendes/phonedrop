@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- phone -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.28" android:pathData="M30.68,46.55 L41.38,46.55 Q44.36,46.55 44.36,49.53 L44.36,75.13 Q44.36,78.10 41.38,78.10 L30.68,78.10 Q27.70,78.10 27.70,75.13 L27.70,49.53 Q27.70,46.55 30.68,46.55 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M34.02,74.08 L38.05,74.08 Q38.66,74.08 38.66,74.69 L38.66,74.69 Q38.66,75.30 38.05,75.30 L34.02,75.30 Q33.40,75.30 33.40,74.69 L33.40,74.69 Q33.40,74.08 34.02,74.08 Z" />
+    <!-- laptop -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.28" android:pathData="M56.46,54.87 L75.22,54.87 Q76.79,54.87 76.79,56.45 L76.79,68.64 Q76.79,70.22 75.22,70.22 L56.46,70.22 Q54.88,70.22 54.88,68.64 L54.88,56.45 Q54.88,54.87 56.46,54.87 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M52.68,72.84 L78.98,72.84 Q80.30,72.84 80.30,74.16 L80.30,74.16 Q80.30,75.48 78.98,75.48 L52.68,75.48 Q51.37,75.48 51.37,74.16 L51.37,74.16 Q51.37,72.84 52.68,72.84 Z" />
+    <!-- arrow -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.63" android:strokeLineCap="round"
+        android:pathData="M36.03,42.61 C39.98,29.89 63.64,29.89 65.83,48.12" />
+    <path android:fillColor="#FFFFFF" android:pathData="M61.01,47.43 L70.65,47.43 L65.83,53.12 Z" />
+</vector>

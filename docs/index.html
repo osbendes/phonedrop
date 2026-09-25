@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhoneDrop</title>
+<meta name="description" content="AirDrop-style file transfer from Android to Mac over Wi-Fi. Fast, private, free.">
+<link rel="icon" href="icon.png">
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --fg:#14161a; --mute:#5b6270; --line:#e5e7eb; --acc:#2563eb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b21; --fg:#eef0f3; --mute:#9aa1ad; --line:#2a2f38; --acc:#60a5fa; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 -apple-system,system-ui,Roboto,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:48px 16px 64px; }
+  header { display:flex; gap:20px; align-items:center; margin-bottom:32px; }
+  header img { width:96px; height:96px; }
+  h1 { font-size:36px; margin:0; line-height:1.1; }
+  .lead { color:var(--mute); font-size:18px; margin:6px 0 0; }
+  .downloads { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:24px 0 8px; }
+  @media (max-width:560px) { .downloads { grid-template-columns:1fr; } header { flex-direction:column; align-items:flex-start; } }
+  a.dl { display:block; padding:16px 18px; border-radius:14px; background:var(--acc); color:#fff; text-decoration:none; font-weight:600; }
+  a.dl small { display:block; font-weight:400; opacity:.85; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-top:16px; }
+  h2 { font-size:20px; margin:0 0 8px; }
+  ol, ul { padding-left:22px; margin:8px 0; }
+  .mute { color:var(--mute); font-size:14px; }
+  a { color:var(--acc); }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <img src="icon.png" alt="">
+  <div>
+    <h1>PhoneDrop</h1>
+    <p class="lead">AirDrop-style file transfer from Android to Mac. Fast, private, no cables.</p>
+  </div>
+</header>
+
+<div class="downloads">
+  <a class="dl" href="https://github.com/osbendes/phonedrop/releases/latest/download/PhoneDrop.dmg">Download for Mac<small>macOS 13 or later · Apple Silicon &amp; Intel</small></a>
+  <a class="dl" href="https://github.com/osbendes/phonedrop/releases/latest/download/PhoneDrop.apk">Download for Android<small>Android 10 or later</small></a>
+</div>
+<p class="mute">Beta. <a href="https://github.com/osbendes/phonedrop/releases">All releases</a> · <a href="https://github.com/osbendes/phonedrop">Source code</a> · <a href="privacy.html">Privacy</a></p>
+
+<div class="card">
+  <h2>Why PhoneDrop</h2>
+  <ul>
+    <li><b>Made for big videos.</b> Transfers use parallel connections at full Wi-Fi speed. If the connection drops, they resume where they left off, and they keep running with the screen off.</li>
+    <li><b>Private.</b> Files go straight from your phone to your Mac over your own network. Everything is encrypted with AES-256-GCM. No accounts, no cloud, no tracking.</li>
+    <li><b>Both ways.</b> Share from any Android app, or drop files onto PhoneDrop on your Mac and download them on your phone.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Set up in a minute</h2>
+  <ol>
+    <li>Open <b>PhoneDrop.dmg</b> and drag PhoneDrop to Applications.</li>
+    <li>The first time you open it, macOS may say it can't verify the app. Go to <b>System Settings › Privacy &amp; Security</b> and click <b>Open Anyway</b>. When asked, allow incoming connections.</li>
+    <li>Install <b>PhoneDrop.apk</b> on your phone. Your browser will ask you to allow installing apps from this source.</li>
+    <li>On the phone, tap <b>Pair with Mac</b> › <b>Scan code</b>, then scan the QR code in the PhoneDrop menu on your Mac's menu bar.</li>
+  </ol>
+  <p class="mute">Your phone and Mac need to be on the same Wi-Fi network. Tip for Xiaomi and similar phones: set PhoneDrop's battery usage to "No restrictions" so transfers keep running with the screen off.</p>
+</div>
+
+<div class="card" lang="tr">
+  <h2>Türkçe</h2>
+  <p>PhoneDrop, videolarını Android telefonundan Mac'ine Wi-Fi üzerinden hızlı ve şifreli olarak gönderir. Bağlantı koparsa kaldığı yerden devam eder, ekran kapalıyken de çalışır. Kurulum için yukarıdaki iki dosyayı indir. Mac'te ilk açılışta <b>Sistem Ayarları › Gizlilik ve Güvenlik › Yine de Aç</b> demen gerekebilir. Ardından telefonda <b>Mac ile eşleştir › Kodu okut</b>'a dokunup Mac'teki QR kodu okut.</p>
+</div>
+</main>
+</body>
+</html>
