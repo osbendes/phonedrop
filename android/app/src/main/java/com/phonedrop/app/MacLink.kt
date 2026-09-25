@@ -14,6 +14,7 @@ import com.phonedrop.app.core.UnauthorizedException
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.URL
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -98,6 +99,30 @@ class MacLink(ctx: Context) {
         throw e
     } catch (e: Exception) {
         false
+    }
+
+    /**
+     * Explains why the Mac can't be reached, as a string resource id: no Wi-Fi, a different
+     * network than the one the Mac was paired on, or (same subnet) the app isn't running.
+     */
+    fun diagnose(): Int {
+        val net = wifiNetwork() ?: return R.string.status_no_wifi
+        val host = prefs.host ?: return R.string.status_searching
+        val link = cm.getLinkProperties(net)?.linkAddresses?.firstOrNull { it.address is Inet4Address }
+            ?: return R.string.status_searching
+        val mac = runCatching { InetAddress.getByName(host) }.getOrNull() as? Inet4Address
+            ?: return R.string.status_searching
+        return if (sameSubnet(link.address.address, mac.address, link.prefixLength)) R.string.status_searching
+        else R.string.status_other_network
+    }
+
+    private fun sameSubnet(a: ByteArray, b: ByteArray, prefix: Int): Boolean {
+        for (i in 0 until 4) {
+            val bits = (prefix - i * 8).coerceIn(0, 8)
+            val mask = (0xFF shl (8 - bits)) and 0xFF
+            if ((a[i].toInt() and mask) != (b[i].toInt() and mask)) return false
+        }
+        return true
     }
 
     fun invalidate(c: MacClient) {

@@ -360,7 +360,7 @@ class TransferService : Service() {
             } catch (e: UnauthorizedException) {
                 throw FatalException(getString(R.string.err_unpaired))
             } catch (e: IOException) {
-                Transfers.linkStatus = getString(R.string.status_searching)
+                Transfers.linkStatus = getString(link.diagnose())
                 sleepOrCancel(item, delay); delay = minOf(delay * 2, 8000); continue
             }
             try {

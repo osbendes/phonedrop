@@ -46,7 +46,9 @@
     <string name="st_cancelled">Stopped</string>
 
     <!-- Status and errors -->
-    <string name="status_searching">Looking for your Mac… Is PhoneDrop open on it?</string>
+    <string name="status_searching">Can\'t find your Mac. Is PhoneDrop open on it, and are both on the same Wi-Fi?</string>
+    <string name="status_other_network">Your phone and Mac seem to be on different networks. Connect them to the same Wi-Fi.</string>
+    <string name="status_no_wifi">Your phone isn\'t on Wi-Fi. Join your Mac\'s Wi-Fi, or connect the Mac to your phone\'s hotspot.</string>
     <string name="status_retry">Connection lost, retrying…</string>
     <string name="status_mac_error">Your Mac didn\'t respond, retrying…</string>
     <string name="err_read">Couldn\'t read the file</string>

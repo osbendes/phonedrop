@@ -41,7 +41,9 @@
     <string name="st_failed">Hata: %1$s</string>
     <string name="st_cancelled">Durduruldu</string>
 
-    <string name="status_searching">Mac aranıyor… PhoneDrop Mac\'te açık mı?</string>
+    <string name="status_searching">Mac bulunamadı. PhoneDrop Mac\'te açık mı, ikisi aynı Wi-Fi\'da mı?</string>
+    <string name="status_other_network">Telefon ve Mac farklı ağlarda görünüyor. İkisini aynı Wi-Fi ağına bağla.</string>
+    <string name="status_no_wifi">Telefon Wi-Fi\'a bağlı değil. Mac\'in Wi-Fi ağına bağlan ya da Mac\'i telefonun hotspot\'una bağla.</string>
     <string name="status_retry">Bağlantı koptu, yeniden deneniyor…</string>
     <string name="status_mac_error">Mac yanıt vermedi, yeniden deneniyor…</string>
     <string name="err_read">Dosya okunamadı</string>

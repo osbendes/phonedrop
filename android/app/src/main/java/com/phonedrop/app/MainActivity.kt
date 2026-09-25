@@ -38,6 +38,7 @@ class MainActivity : Activity() {
     private lateinit var link: MacLink
     private val rows = HashMap<Int, Row>()
     @Volatile private var macOnline: Boolean? = null
+    @Volatile private var offlineReason = R.string.mac_offline
 
     private class Row(val root: View, val name: TextView, val bar: ProgressBar, val status: TextView, val speed: TextView)
 
@@ -179,7 +180,7 @@ class MainActivity : Activity() {
         btn.setText(R.string.btn_change)
         status.setText(when (macOnline) {
             true -> R.string.mac_connected
-            false -> R.string.mac_offline
+            false -> offlineReason
             null -> R.string.mac_searching
         })
         status.setTextColor(getColor(when (macOnline) { true -> R.color.ok; false -> R.color.warn; null -> R.color.mute }))
@@ -190,6 +191,7 @@ class MainActivity : Activity() {
         if (!link.prefs.paired) { renderOutbox(null, null); return }
         thread {
             val result = runCatching { link.client().outbox() }
+            if (result.isFailure) offlineReason = link.diagnose()
             runOnUiThread {
                 macOnline = result.isSuccess
                 renderMac()
