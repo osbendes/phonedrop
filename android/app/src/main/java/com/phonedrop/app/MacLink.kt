@@ -57,6 +57,9 @@ class MacLink(ctx: Context) {
     private val nsd = app.getSystemService(NsdManager::class.java)
 
     @Volatile private var verified: MacClient? = null
+    private val direct = DirectLink(app, prefs)
+    private var directHost: Pair<String, Int>? = null
+    private var lastDirectAttempt = 0L
 
     /** If Wi-Fi has no internet, Android may route traffic over mobile data; pin it to Wi-Fi. */
     @Suppress("DEPRECATION")
@@ -76,18 +79,48 @@ class MacLink(ctx: Context) {
 
     private fun deviceName() = "${Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${Build.MODEL}"
 
-    /** Returns a client for a Mac that answered; throws IOException if none can be reached. */
+    /**
+     * Returns a client for a Mac that answered; throws IOException if none can be reached.
+     * With [allowDirect], falls back to direct mode (Bluetooth + hotspot) when the phone isn't on
+     * the Mac's network; [progress] then receives status string resources.
+     */
     @Synchronized
-    fun client(): MacClient {
+    fun client(allowDirect: Boolean = false, progress: (Int) -> Unit = {}): MacClient {
         verified?.let { return it }
-        if (!prefs.paired) throw IOException("not paired")
+        val key = prefs.key ?: throw IOException("not paired")
+        // Already connected directly: the hotspot route doesn't go through a Wi-Fi client network
+        directHost?.let { (h, p) -> if (handshake(MacClient("http://$h:$p", key))) return verified!! }
         prefs.host?.let { h -> clientFor(h, prefs.port)?.let { c -> if (handshake(c)) return c } }
-        val (host, port) = discover(8000) ?: throw IOException("Mac not found")
-        val c = clientFor(host, port) ?: throw IOException("not paired")
-        if (!handshake(c)) throw IOException("Mac not found")
-        prefs.host = host
-        prefs.port = port
-        return c
+        discover(8000)?.let { (host, port) ->
+            val c = clientFor(host, port) ?: throw IOException("not paired")
+            if (handshake(c)) {
+                prefs.host = host
+                prefs.port = port
+                return c
+            }
+        }
+        val onOtherNetwork = diagnose() != R.string.status_searching
+        if (allowDirect && onOtherNetwork && DirectLink.hasPermissions(app) &&
+            System.currentTimeMillis() - lastDirectAttempt > 30_000) {
+            lastDirectAttempt = System.currentTimeMillis()
+            val (h, p) = direct.connect(progress)
+            if (handshake(MacClient("http://$h:$p", key))) {
+                directHost = h to p
+                return verified!!
+            }
+            endDirect()
+        }
+        throw IOException("Mac not found")
+    }
+
+    /** Leaves direct mode: tells the Mac to go back to its Wi-Fi and stops the hotspot. */
+    @Synchronized
+    fun endDirect() {
+        if (!direct.active && directHost == null) return
+        directHost?.let { runCatching { verified?.post("/api/direct/end", timeoutMs = 3000) } }
+        direct.close()
+        directHost = null
+        verified = null
     }
 
     private fun handshake(c: MacClient): Boolean = try {

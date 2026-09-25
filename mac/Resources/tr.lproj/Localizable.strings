@@ -27,3 +27,5 @@
 "Show in Finder" = "Finder'da Göster";
 "Transferring" = "Aktarılıyor";
 "Waiting…" = "Bekleniyor…";
+"Allow Direct Connection on Wi-Fi" = "Wi-Fi'dayken Doğrudan Bağlantıya İzin Ver";
+"Connected directly to your phone (%@)" = "Telefona doğrudan bağlı (%@)";

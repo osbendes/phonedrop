@@ -73,6 +73,12 @@ struct MenuContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
+            if let ssid = state.directSSID {
+                HStack(spacing: 8) {
+                    Image(systemName: "antenna.radiowaves.left.and.right").foregroundStyle(.blue)
+                    Text(verbatim: String(format: L("Connected directly to your phone (%@)"), ssid)).font(.callout)
+                }
+            }
             if state.devices.isEmpty || state.showPair {
                 PairView()
             } else {
@@ -116,6 +122,7 @@ struct MenuContent: View {
             Menu {
                 Button(L("Pair a Phone…")) { state.showPair.toggle() }
                 Button(L("Change Download Folder…")) { state.chooseSaveDir() }
+                Toggle(L("Allow Direct Connection on Wi-Fi"), isOn: $state.allowDirectOnWiFi)
                 Toggle(L("Open at Login"), isOn: Binding(get: { state.launchAtLogin }, set: { state.setLaunchAtLogin($0) }))
                 Divider()
                 Button(L("Reset Pairing…")) { confirmReset() }

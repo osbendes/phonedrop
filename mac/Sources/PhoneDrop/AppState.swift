@@ -29,11 +29,16 @@ final class AppState: ObservableObject {
     @Published var ip: String = "–"
     @Published var showPair = false
     @Published var dropTargeted = false
+    @Published var directSSID: String?
+    @Published var allowDirectOnWiFi = UserDefaults.standard.bool(forKey: "allowDirectOnWiFi") {
+        didSet { defaults.set(allowDirectOnWiFi, forKey: "allowDirectOnWiFi") }
+    }
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     private var key: Data
     private let server = HTTPServer()
     private let receiver: Receiver
+    private let direct = DirectMode()
     private var timer: Timer?
     private var activity: NSObjectProtocol?
     private var idleSince: Date?
@@ -43,12 +48,11 @@ final class AppState: ObservableObject {
         let dir = defaults.string(forKey: "saveDir").map { URL(fileURLWithPath: $0) }
             ?? FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].appendingPathComponent("PhoneDrop")
         saveDir = dir
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         key = KeyStore.load()
         receiver = Receiver(key: key, saveDir: dir)
         devices = defaults.stringArray(forKey: "devices") ?? []
         if let data = defaults.data(forKey: "outbox"), let list = try? JSONDecoder().decode([OutboxFile].self, from: data) {
-            outbox = list.filter { FileManager.default.fileExists(atPath: $0.path) }
+            outbox = list
         }
         if let data = defaults.data(forKey: "recent"), let list = try? JSONDecoder().decode([RecentFile].self, from: data) {
             recent = list
@@ -61,13 +65,36 @@ final class AppState: ObservableObject {
         receiver.onDeviceSeen = { [weak self] name in
             Task { @MainActor in self?.deviceSeen(name) }
         }
-        receiver.cleanupPartials()
+        // Disk work stays off the main thread: the first touch of ~/Downloads waits for the user to
+        // answer macOS's folder-access prompt, and the app must stay responsive meanwhile.
+        let receiver = self.receiver
+        let savedOutbox = outbox
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            receiver.cleanupPartials()
+            let existing = savedOutbox.filter { FileManager.default.fileExists(atPath: $0.path) }
+            if existing.count != savedOutbox.count {
+                Task { @MainActor in
+                    self?.outbox = existing
+                    self?.saveOutbox()
+                }
+            }
+        }
 
         server.handler = receiver
         server.onReady = { [weak self] port in
             Task { @MainActor in self?.port = port }
         }
         server.start(preferredPort: 8765, service: service())
+
+        // DirectMode calls these from its Bluetooth queue, so they must not touch main-actor state
+        let server = self.server
+        direct.key = { KeyStore.load() }
+        direct.port = { server.port }
+        direct.allowOnWiFi = { UserDefaults.standard.bool(forKey: "allowDirectOnWiFi") }
+        direct.onStateChange = { [weak self] ssid in Task { @MainActor in self?.directSSID = ssid } }
+        receiver.onDirectEnd = { [weak self] in self?.direct.end() }
+        direct.start()
 
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         ip = Self.localIPv4() ?? "–"

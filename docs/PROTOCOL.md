@@ -81,3 +81,28 @@ Successful JSON responses are sealed.
 The plaintext is split into 1 MiB frames. Each frame is sent as
 `u32 big-endian box length || sealed box`. `from` lets an interrupted download
 resume at a frame boundary.
+
+## Direct mode (no router)
+
+When the phone can't reach the Mac over the network, it can connect directly. Bluetooth LE
+carries only the handshake; the files still go over Wi-Fi.
+
+1. The Mac advertises GATT service `C0DE0001-9D4B-4F2A-8E61-50484F4E4544` whenever the app runs.
+2. The phone scans for it, connects, and reads **INFO** (`C0DE0002-…`): the Mac's `kid` as plain
+   UTF-8. If it doesn't match the paired Mac, the phone disconnects and keeps looking.
+3. The phone starts an Android *local-only hotspot*: random SSID and password, no internet.
+4. The phone writes **JOIN** (`C0DE0003-…`): `seal({"s": ssid, "p": password, "t": unix seconds}, "pd2 ble join")`.
+   The Mac rejects boxes that don't open or are more than 300 s old.
+5. The Mac joins the hotspot with `networksetup -setairportnetwork`. It then publishes its address in
+   **STATUS** (`C0DE0004-…`, read):
+   `seal({"st": "joining" | "ready" | "error", "ip": "...", "p": port, "e": reason, "t": unix seconds}, "pd2 ble status")`.
+   The phone polls STATUS until it reads `ready` or `error`.
+6. The transfer runs over HTTP exactly as on a normal network.
+7. When the queue is empty, the phone sends `POST /api/direct/end` and stops the hotspot. The Mac then
+   forgets the hotspot network and macOS rejoins its usual Wi-Fi by itself.
+
+If the Mac is already on a Wi-Fi network, it refuses to switch (`"e": "on-wifi"`) unless the user
+turned on "Allow Direct Connection on Wi-Fi". That way a phone can't pull a working Mac off its network
+without the user agreeing to it.
+
+All four characteristic UUIDs share the suffix `-9D4B-4F2A-8E61-50484F4E4544`.

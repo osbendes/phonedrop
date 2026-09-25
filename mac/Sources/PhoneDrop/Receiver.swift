@@ -68,6 +68,7 @@ final class Receiver: HTTPHandler {
     var macName: () -> String = { "Mac" }
     var onReceived: ((URL, Int64) -> Void)?
     var onDeviceSeen: ((String) -> Void)?
+    var onDirectEnd: (() -> Void)?
 
     init(key: Data, saveDir: URL) {
         self.key = SymmetricKey(data: key)
@@ -136,6 +137,9 @@ final class Receiver: HTTPHandler {
         case ("POST", "/api/cancel"): respond(cancel(req))
         case ("POST", "/api/outbox"): respond(outbox(req))
         case ("GET", "/api/dl"): respond(download(req))
+        case ("POST", "/api/direct/end"):
+            respond(sealed(req, [:]))
+            onDirectEnd?()
         default: respond(.error(404, "not found"))
         }
     }

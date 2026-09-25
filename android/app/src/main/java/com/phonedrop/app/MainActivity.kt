@@ -86,6 +86,20 @@ class MainActivity : Activity() {
         renderMac()
         refreshMac()
         handler.post(tick)
+        askDirectPermissions()
+    }
+
+    /** Asks once, after pairing, for what direct mode needs. Denying only disables that fallback. */
+    private fun askDirectPermissions() {
+        val sp = getSharedPreferences("ui", MODE_PRIVATE)
+        if (!link.prefs.paired || DirectLink.hasPermissions(this) || sp.getBoolean("directAsked", false)) return
+        sp.edit().putBoolean("directAsked", true).apply()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.direct_perm_title)
+            .setMessage(R.string.direct_perm_msg)
+            .setPositiveButton(R.string.direct_perm_allow) { _, _ -> requestPermissions(DirectLink.permissions(), 2) }
+            .setNegativeButton(R.string.direct_perm_later, null)
+            .show()
     }
 
     override fun onPause() {

@@ -1,1 +1,2 @@
 "NSLocalNetworkUsageDescription" = "PhoneDrop, telefonundan gelen dosyaları yerel Wi-Fi ağın üzerinden alır.";
+"NSBluetoothAlwaysUsageDescription" = "PhoneDrop, Wi-Fi ağı olmadığında telefonuna doğrudan bağlanmak için Bluetooth kullanır.";

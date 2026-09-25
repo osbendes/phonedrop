@@ -70,4 +70,5 @@ Anahtar oluşturuldu: `~/Developer/PhoneDrop-signing/`. `./gradlew bundleRelease
 ## Bilinen sınırlamalar
 - Mac uygulaması imzasız. Kullanıcılar ilk açılışta Sistem Ayarları › Gizlilik ve Güvenlik bölümünden **Yine de Aç** demek zorunda. İleride Apple Developer ID (yıllık 99 $) alınırsa bu adım ortadan kalkar.
 - Android 15 ve sonrasında arka plan aktarımı günde 6 saatle sınırlı. Normal kullanımda bu sınıra ulaşılmaz.
+- İmzasız Mac uygulamasının her yeni sürümü, macOS'ta İndirilenler klasörü (ve Bluetooth) iznini yeniden sorar. Apple Developer ID ile imzalanırsa bu tekrar etmez.
 - Eşleştirme anahtarı Mac başına tek. Bir telefonu kaldırmak için Mac'te eşleştirmeyi sıfırlamak gerekiyor, bu da tüm telefonların yeniden eşleşmesini gerektiriyor.

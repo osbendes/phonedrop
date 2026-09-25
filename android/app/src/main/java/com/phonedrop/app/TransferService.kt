@@ -356,11 +356,11 @@ class TransferService : Service() {
         while (true) {
             if (item.cancelled) throw CancelledException()
             val client = try {
-                link.client()
+                link.client(allowDirect = true) { Transfers.linkStatus = getString(it) }
             } catch (e: UnauthorizedException) {
                 throw FatalException(getString(R.string.err_unpaired))
             } catch (e: IOException) {
-                Transfers.linkStatus = getString(link.diagnose())
+                Transfers.linkStatus = getString(if (e is DirectLink.DirectException) e.reason else link.diagnose())
                 sleepOrCancel(item, delay); delay = minOf(delay * 2, 8000); continue
             }
             try {
@@ -475,6 +475,8 @@ class TransferService : Service() {
     }
 
     private fun shutdown() {
+        // Leave direct mode off the main thread (it makes a network call)
+        thread { runCatching { link.endDirect() } }
         stopping = true
         releaseLocks()
         stopForeground(STOP_FOREGROUND_REMOVE)

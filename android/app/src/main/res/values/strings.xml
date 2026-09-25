@@ -84,4 +84,20 @@
     <string name="eta_s">%1$d s</string>
     <string name="eta_ms">%1$d min %2$d s</string>
     <string name="eta_hm">%1$d h %2$d min</string>
+
+    <!-- Direct mode (no router) -->
+    <string name="direct_perm_title">Transfers without a router</string>
+    <string name="direct_perm_msg">When your phone and Mac aren\'t on the same Wi-Fi, PhoneDrop can find your Mac over Bluetooth and connect to it directly. To do that, Android needs Bluetooth and nearby-device permissions. PhoneDrop never uses your location.</string>
+    <string name="direct_perm_allow">Allow</string>
+    <string name="direct_perm_later">Not now</string>
+    <string name="direct_no_permission">Can\'t find your Mac. To connect without a router, allow Bluetooth and nearby devices for PhoneDrop.</string>
+    <string name="direct_unsupported">Can\'t find your Mac, and this phone doesn\'t support direct connections.</string>
+    <string name="direct_bt_off">Can\'t find your Mac. Turn on Bluetooth to connect without a router.</string>
+    <string name="direct_location_off">Can\'t find your Mac. To connect without a router, turn on Location (Android requires it for this).</string>
+    <string name="direct_searching">Looking for your Mac nearby over Bluetooth…</string>
+    <string name="direct_starting">Found your Mac. Setting up a direct connection…</string>
+    <string name="direct_joining">Your Mac is joining your phone\'s network…</string>
+    <string name="direct_mac_on_wifi">Your Mac is on another Wi-Fi network. Join the same network, or on the Mac turn on “Allow Direct Connection on Wi-Fi”.</string>
+    <string name="direct_failed">Couldn\'t connect directly to your Mac. Retrying…</string>
+    <string name="direct_hotspot_failed">Your phone couldn\'t start its temporary Wi-Fi network. If your hotspot is on, turn it off and try again.</string>
 </resources>

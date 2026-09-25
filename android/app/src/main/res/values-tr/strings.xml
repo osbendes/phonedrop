@@ -76,4 +76,19 @@
     <string name="eta_s">%1$d sn</string>
     <string name="eta_ms">%1$d dk %2$d sn</string>
     <string name="eta_hm">%1$d sa %2$d dk</string>
+
+    <string name="direct_perm_title">Modemsiz aktarım</string>
+    <string name="direct_perm_msg">Telefon ve Mac aynı Wi-Fi\'da değilse PhoneDrop, Mac\'i Bluetooth ile bulup ona doğrudan bağlanabilir. Bunun için Android, Bluetooth ve yakındaki cihazlar iznini istiyor. PhoneDrop konumunu asla kullanmaz.</string>
+    <string name="direct_perm_allow">İzin ver</string>
+    <string name="direct_perm_later">Şimdi değil</string>
+    <string name="direct_no_permission">Mac bulunamadı. Modemsiz bağlanmak için PhoneDrop\'a Bluetooth ve yakındaki cihazlar iznini ver.</string>
+    <string name="direct_unsupported">Mac bulunamadı. Bu telefon doğrudan bağlantıyı desteklemiyor.</string>
+    <string name="direct_bt_off">Mac bulunamadı. Modemsiz bağlanmak için Bluetooth\'u aç.</string>
+    <string name="direct_location_off">Mac bulunamadı. Modemsiz bağlanmak için Konum\'u aç (Android bunu şart koşuyor).</string>
+    <string name="direct_searching">Mac yakında aranıyor (Bluetooth)…</string>
+    <string name="direct_starting">Mac bulundu, doğrudan bağlantı kuruluyor…</string>
+    <string name="direct_joining">Mac telefonun ağına bağlanıyor…</string>
+    <string name="direct_mac_on_wifi">Mac başka bir Wi-Fi ağına bağlı. Aynı ağa bağlan ya da Mac\'te “Wi-Fi\'dayken Doğrudan Bağlantıya İzin Ver”i aç.</string>
+    <string name="direct_failed">Mac\'e doğrudan bağlanılamadı. Yeniden deneniyor…</string>
+    <string name="direct_hotspot_failed">Telefon geçici Wi-Fi ağını açamadı. Hotspot açıksa kapatıp tekrar dene.</string>
 </resources>
