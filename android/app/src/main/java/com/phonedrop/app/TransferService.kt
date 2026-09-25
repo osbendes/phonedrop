@@ -94,7 +94,15 @@ class TransferService : Service() {
                 .putParcelableArrayListExtra("uris", ArrayList(uris))
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             i.clipData = clip
-            ctx.startForegroundService(i)
+            try {
+                ctx.startForegroundService(i)
+            } catch (e: SecurityException) {
+                // The sharing app gave us a read grant we can't pass on; try without passing it.
+                // If we can't read the file either, enqueue() reports "couldn't read the file".
+                i.clipData = null
+                i.flags = i.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION.inv()
+                ctx.startForegroundService(i)
+            }
         }
 
         fun download(ctx: Context, fileId: String, name: String, size: Long) {

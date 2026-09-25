@@ -83,6 +83,16 @@ class MainActivity : Activity() {
                 val report = DirectLink(this, link.prefs).probe()
                 runOnUiThread { Toast.makeText(this, report.trim(), Toast.LENGTH_LONG).show() }
             }
+            // Sends a random file through the normal upload path (share sheet → service → Mac)
+            "com.osbendes.phonedrop.DIAG_SEND" -> thread {
+                val mb = i.getIntExtra("mb", 20)
+                val f = java.io.File(cacheDir, i.getStringExtra("name") ?: "pd-diag.bin")
+                val buf = ByteArray(1 shl 20)
+                val rnd = java.security.SecureRandom()
+                f.outputStream().use { out -> repeat(mb) { rnd.nextBytes(buf); out.write(buf) } }
+                android.util.Log.i("PhoneDrop", "diag: sending ${f.name} (${f.length()} bytes)")
+                TransferService.upload(this, listOf(android.net.Uri.fromFile(f)))
+            }
             // Full handshake incl. hotspot; if the Mac is on Wi-Fi it answers "on-wifi" and nothing switches
             "com.osbendes.phonedrop.DIAG_DIRECT" -> thread {
                 val d = DirectLink(this, link.prefs)

@@ -60,6 +60,8 @@ class MacLink(ctx: Context) {
     private val direct = DirectLink(app, prefs)
     private var directHost: Pair<String, Int>? = null
     private var lastDirectAttempt = 0L
+    /** Why the last direct attempt failed, so the user keeps seeing it between attempts. */
+    private var lastDirectError: Int? = null
 
     /** If Wi-Fi has no internet, Android may route traffic over mobile data; pin it to Wi-Fi. */
     @Suppress("DEPRECATION")
@@ -101,15 +103,23 @@ class MacLink(ctx: Context) {
         }
         // Two routers can hand out the same subnet, so "same subnet" doesn't prove "same network".
         // Let Bluetooth decide: direct mode only goes ahead if the paired Mac is actually nearby.
-        if (allowDirect && DirectLink.hasPermissions(app) &&
-            System.currentTimeMillis() - lastDirectAttempt > 30_000) {
-            lastDirectAttempt = System.currentTimeMillis()
-            val (h, p) = direct.connect(progress)
-            if (handshake(MacClient("http://$h:$p", key))) {
-                directHost = h to p
-                return verified!!
+        if (allowDirect && DirectLink.hasPermissions(app)) {
+            if (System.currentTimeMillis() - lastDirectAttempt > 30_000) {
+                lastDirectAttempt = System.currentTimeMillis()
+                val (h, p) = try {
+                    direct.connect(progress)
+                } catch (e: DirectLink.DirectException) {
+                    lastDirectError = e.reason
+                    throw e
+                }
+                lastDirectError = null
+                if (handshake(MacClient("http://$h:$p", key))) {
+                    directHost = h to p
+                    return verified!!
+                }
+                endDirect()
             }
-            endDirect()
+            lastDirectError?.let { throw DirectLink.DirectException(it) }
         }
         throw IOException("Mac not found")
     }
