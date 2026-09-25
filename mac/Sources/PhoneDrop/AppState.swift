@@ -94,6 +94,14 @@ final class AppState: ObservableObject {
         direct.allowOnWiFi = { UserDefaults.standard.bool(forKey: "allowDirectOnWiFi") }
         direct.onStateChange = { [weak self] ssid in Task { @MainActor in self?.directSSID = ssid } }
         receiver.onDirectEnd = { [weak self] in self?.direct.end() }
+        // Once the phone has a file, it no longer needs to be offered
+        receiver.onDownloaded = { [weak self] id in
+            Task { @MainActor in
+                guard let self else { return }
+                self.outbox.removeAll { $0.id == id }
+                self.saveOutbox()
+            }
+        }
         direct.start()
 
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
@@ -218,6 +226,11 @@ final class AppState: ObservableObject {
                 outbox.append(OutboxFile(id: UUID().uuidString.lowercased(), path: u.path))
             }
         }
+        saveOutbox()
+    }
+
+    func clearOutbox() {
+        outbox.removeAll()
         saveOutbox()
     }
 

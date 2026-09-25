@@ -4,7 +4,7 @@
 "Cancel" = "Vazgeç";
 "Change Download Folder…" = "Kayıt Klasörünü Değiştir…";
 "Choose" = "Seç";
-"Drop files here. They appear in the app on your phone." = "Dosyaları buraya bırak. Telefonundaki uygulamada görünürler.";
+"Drop files here. They appear in the app on your phone and leave this list once downloaded." = "Dosyaları buraya bırak. Telefonundaki uygulamada görünürler, indirilince bu listeden çıkarlar.";
 "File received" = "Dosya alındı";
 "Files from your phone appear here." = "Telefonundan gelen dosyalar burada görünür.";
 "Get the Android app" = "Android uygulamasını indir";
@@ -29,3 +29,4 @@
 "Waiting…" = "Bekleniyor…";
 "Allow Direct Connection on Wi-Fi" = "Wi-Fi'dayken Doğrudan Bağlantıya İzin Ver";
 "Connected directly to your phone (%@)" = "Telefona doğrudan bağlı (%@)";
+"Clear All" = "Tümünü Temizle";

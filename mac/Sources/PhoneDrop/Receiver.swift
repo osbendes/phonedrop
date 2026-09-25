@@ -69,6 +69,8 @@ final class Receiver: HTTPHandler {
     var onReceived: ((URL, Int64) -> Void)?
     var onDeviceSeen: ((String) -> Void)?
     var onDirectEnd: (() -> Void)?
+    /// A phone received every byte of an outbox file.
+    var onDownloaded: ((String) -> Void)?
 
     init(key: Data, saveDir: URL) {
         self.key = SymmetricKey(data: key)
@@ -360,6 +362,7 @@ final class Receiver: HTTPHandler {
                     try? fh.close()
                     self?.lock.locked { _ = self?.downloads.removeValue(forKey: dlKey) }
                     writer.finish(ok: true)
+                    self?.onDownloaded?(fid)
                     return
                 }
                 do {

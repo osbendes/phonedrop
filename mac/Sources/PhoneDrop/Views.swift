@@ -238,7 +238,7 @@ struct OutboxView: View {
             Text(verbatim: L("Send to Phone").uppercased()).font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 6) {
                 if state.outbox.isEmpty {
-                    Text(verbatim: L("Drop files here. They appear in the app on your phone."))
+                    Text(verbatim: L("Drop files here. They appear in the app on your phone and leave this list once downloaded."))
                         .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 44)
                         .multilineTextAlignment(.center)
                 } else {
@@ -265,7 +265,13 @@ struct OutboxView: View {
                 }
                 return true
             }
-            Button(L("Add Files…")) { state.addToOutbox() }.controlSize(.small)
+            HStack {
+                Button(L("Add Files…")) { state.addToOutbox() }
+                if !state.outbox.isEmpty {
+                    Button(L("Clear All")) { state.clearOutbox() }
+                }
+            }
+            .controlSize(.small)
         }
     }
 }

@@ -39,6 +39,7 @@ class MainActivity : Activity() {
     private val rows = HashMap<Int, Row>()
     @Volatile private var macOnline: Boolean? = null
     @Volatile private var offlineReason = R.string.mac_offline
+    private val finishedDownloads = HashSet<Int>()
 
     private class Row(val root: View, val name: TextView, val bar: ProgressBar, val status: TextView, val speed: TextView)
 
@@ -290,6 +291,11 @@ class MainActivity : Activity() {
         val warn = Transfers.linkStatus.takeIf { Transfers.active().isNotEmpty() }
         ls.visibility = if (warn == null) View.GONE else View.VISIBLE
         ls.text = warn
+
+        // A finished download drops off the Mac's list; refresh ours to match
+        val newlyDone = items.filter { it.direction == Transfers.Direction.DOWN && it.state == Transfers.State.DONE }
+            .map { it.key }.filter { finishedDownloads.add(it) }
+        if (newlyDone.isNotEmpty()) refreshMac()
 
         val keys = items.map { it.key }.toSet()
         rows.keys.filter { it !in keys }.forEach { box.removeView(rows.remove(it)!!.root) }
