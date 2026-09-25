@@ -1,0 +1,5 @@
+# ML Kit's Google code scanner looks up internal components by reflection; R8's full mode
+# strips them and scanning crashes with a NullPointerException inside mlkit_code_scanner.
+-keep class com.google.mlkit.** { *; }
+-keep class com.google.android.gms.internal.mlkit_code_scanner.** { *; }
+-keep class com.google.firebase.components.** { *; }
