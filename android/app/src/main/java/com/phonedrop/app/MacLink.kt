@@ -99,8 +99,9 @@ class MacLink(ctx: Context) {
                 return c
             }
         }
-        val onOtherNetwork = diagnose() != R.string.status_searching
-        if (allowDirect && onOtherNetwork && DirectLink.hasPermissions(app) &&
+        // Two routers can hand out the same subnet, so "same subnet" doesn't prove "same network".
+        // Let Bluetooth decide: direct mode only goes ahead if the paired Mac is actually nearby.
+        if (allowDirect && DirectLink.hasPermissions(app) &&
             System.currentTimeMillis() - lastDirectAttempt > 30_000) {
             lastDirectAttempt = System.currentTimeMillis()
             val (h, p) = direct.connect(progress)
