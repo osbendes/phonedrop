@@ -2,15 +2,48 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Shows the same content as the menu bar popover in a regular window. The menu bar icon can be
+/// hidden (e.g. behind the notch when the menu bar is full), so launching the app opens this window.
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var window: NSWindow?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if !CommandLine.arguments.contains("--snapshot") { showWindow() }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showWindow()
+        return true
+    }
+
+    func showWindow() {
+        if window == nil {
+            let host = NSHostingController(rootView: MenuContent().environmentObject(AppState.shared))
+            let w = NSWindow(contentViewController: host)
+            w.title = "PhoneDrop"
+            w.styleMask = [.titled, .closable, .miniaturizable]
+            w.isReleasedWhenClosed = false
+            w.center()
+            window = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
+}
+
 @main
 struct PhoneDropApp: App {
-    @StateObject private var state = AppState()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    // Created eagerly: the server must start even if the menu bar icon is never drawn.
+    @StateObject private var state = AppState.shared
 
     init() {
+        _ = AppState.shared
         // Debug aid: `PhoneDrop --snapshot out.png` renders the menu window to a PNG and exits.
         if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
             let out = CommandLine.arguments[i + 1]
-            let state = AppState()
+            let state = AppState.shared
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 let renderer = ImageRenderer(content: MenuContent().environmentObject(state)
                     .background(Color(nsColor: .windowBackgroundColor)))

@@ -17,6 +17,7 @@ struct RecentFile: Identifiable, Codable {
 
 @MainActor
 final class AppState: ObservableObject {
+    static let shared = AppState()
     static let androidAppURL = URL(string: "https://github.com/osbendes/phonedrop/releases/latest")!
 
     @Published var transfers: [TransferSnapshot] = []
