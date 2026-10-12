@@ -150,7 +150,16 @@
                 android:id="@+id/transfersAction"
                 style="@style/Link"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:text="@string/action_stop" />
+
+            <TextView
+                android:id="@+id/transfersClear"
+                style="@style/Link"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/action_clear" />
         </LinearLayout>
 
         <TextView

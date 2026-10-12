@@ -183,6 +183,12 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Empties the "Received" list; the files themselves stay where they are.
+    func clearRecent() {
+        recent.removeAll()
+        defaults.removeObject(forKey: "recent")
+    }
+
     private func received(_ url: URL, size: Int64) {
         recent.insert(RecentFile(path: url.path, size: size, time: Date()), at: 0)
         recent = Array(recent.prefix(20))

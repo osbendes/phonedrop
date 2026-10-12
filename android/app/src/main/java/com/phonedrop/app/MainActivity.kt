@@ -65,10 +65,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.batteryBtn).setOnClickListener {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         }
-        findViewById<TextView>(R.id.transfersAction).setOnClickListener {
-            if (Transfers.active().isNotEmpty()) TransferService.stopAll(this)
-            else { Transfers.clearFinished(); renderTransfers() }
-        }
+        findViewById<View>(R.id.transfersAction).setOnClickListener { TransferService.stopAll(this) }
+        // Removes finished, failed and stopped rows; anything still running stays
+        findViewById<View>(R.id.transfersClear).setOnClickListener { Transfers.clearFinished(); renderTransfers() }
 
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -403,8 +402,9 @@ class MainActivity : Activity() {
         val box = findViewById<LinearLayout>(R.id.transfers)
         val items = Transfers.items.toList()
         findViewById<View>(R.id.transfersHeader).visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
-        findViewById<TextView>(R.id.transfersAction).setText(
-            if (Transfers.active().isNotEmpty()) R.string.action_stop else R.string.action_clear)
+        val running = Transfers.active().size
+        findViewById<View>(R.id.transfersAction).visibility = if (running > 0) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.transfersClear).visibility = if (items.size > running) View.VISIBLE else View.GONE
         val ls = findViewById<TextView>(R.id.linkStatus)
         val warn = Transfers.linkStatus.takeIf { Transfers.active().isNotEmpty() }
         ls.visibility = if (warn == null) View.GONE else View.VISIBLE

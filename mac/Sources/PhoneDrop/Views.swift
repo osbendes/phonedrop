@@ -90,7 +90,7 @@ struct MenuContent: View {
                 }
             }
             section(L("Save to")) { SaveLocationRow() }
-            section(L("Received")) {
+            section(L("Received"), action: state.recent.isEmpty ? nil : (L("Clear"), { state.clearRecent() })) {
                 if state.recent.isEmpty {
                     Text(verbatim: L("Files from your phone appear here.")).foregroundStyle(.secondary).font(.callout)
                 } else {
@@ -163,9 +163,16 @@ struct MenuContent: View {
     }
 
     @ViewBuilder
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func section<Content: View>(_ title: String, action: (String, () -> Void)? = nil,
+                                        @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(verbatim: title.uppercased()).font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+            HStack {
+                Text(verbatim: title.uppercased()).font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+                Spacer()
+                if let action {
+                    Button(action.0, action: action.1).buttonStyle(.link).font(.caption)
+                }
+            }
             content()
         }
     }
