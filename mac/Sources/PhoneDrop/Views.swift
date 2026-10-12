@@ -66,7 +66,12 @@ struct PhoneDropApp: App {
             let out = CommandLine.arguments[i + 1]
             let state = AppState.shared
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                let renderer = ImageRenderer(content: MenuContent().environmentObject(state)
+                // `--pair` / `--pair-app` render the pairing window instead of the main view
+                let args = CommandLine.arguments
+                state.qrShowsApp = args.contains("--pair-app")
+                let content = args.contains("--pair") || args.contains("--pair-app")
+                    ? AnyView(PairSheet()) : AnyView(MenuContent())
+                let renderer = ImageRenderer(content: content.environmentObject(state)
                     .background(Color(nsColor: .windowBackgroundColor)))
                 renderer.scale = 2
                 if let img = renderer.nsImage, let tiff = img.tiffRepresentation,
@@ -100,7 +105,8 @@ struct MenuContent: View {
                     Text(verbatim: String(format: L("Connected directly to your phone (%@)"), ssid)).font(.callout)
                 }
             }
-            if state.devices.isEmpty || state.showPair {
+            // With no phone paired yet the code is the main thing to show; afterwards it lives in its own window
+            if state.devices.isEmpty {
                 PairView()
             } else {
                 connectedRow
@@ -141,8 +147,8 @@ struct MenuContent: View {
             Text(verbatim: "PhoneDrop").font(.headline)
             Spacer()
             Menu {
-                Button(L("Pair a Phone…")) { state.qrShowsApp = false; state.showPair.toggle() }
-                Button(L("Get the Android App…")) { state.qrShowsApp = true; state.showPair = true }
+                Button(L("Pair a Phone…")) { PairWindow.show(appQR: false) }
+                Button(L("Get the Android App…")) { PairWindow.show(appQR: true) }
                 Button(L("Change Download Folder…")) { state.chooseSaveDir() }
                 Toggle(L("Allow Direct Connection on Wi-Fi"), isOn: $state.allowDirectOnWiFi)
                 Toggle(L("Open at Login"), isOn: Binding(get: { state.launchAtLogin }, set: { state.setLaunchAtLogin($0) }))
@@ -165,7 +171,7 @@ struct MenuContent: View {
             Text(verbatim: String(format: L("Ready · %@"), state.devices.first ?? ""))
                 .font(.callout).lineLimit(1)
             Spacer()
-            Button(L("Pair Another")) { state.showPair = true }.controlSize(.small)
+            Button(L("Pair Another")) { PairWindow.show(appQR: false) }.controlSize(.small)
         }
     }
 
@@ -179,7 +185,6 @@ struct MenuContent: View {
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn {
             state.resetPairing()
-            state.showPair = true
         }
     }
 
@@ -234,6 +239,40 @@ struct SaveLocationRow: View {
     }
 }
 
+/// The pairing / app-download codes in their own closable window, so the main view stays as it is.
+@MainActor
+enum PairWindow {
+    private static var window: NSWindow?
+
+    static func show(appQR: Bool) {
+        AppState.shared.qrShowsApp = appQR
+        if window == nil {
+            let host = NSHostingController(rootView: PairSheet().environmentObject(AppState.shared))
+            let w = NSPanel(contentViewController: host)
+            w.title = L("Pair a Phone")
+            w.styleMask = [.titled, .closable]
+            w.isReleasedWhenClosed = false
+            w.center()
+            window = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    static func close() { window?.close() }
+}
+
+struct PairSheet: View {
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 12) {
+            PairView()
+            Button(L("Done")) { PairWindow.close() }.keyboardShortcut(.defaultAction)
+        }
+        .padding(16)
+        .frame(width: 380)
+    }
+}
+
 struct PairView: View {
     @EnvironmentObject var state: AppState
 
@@ -255,7 +294,7 @@ struct PairView: View {
                 }
                 if state.qrShowsApp {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(verbatim: L("Get the Android app")).font(.headline)
+                        Text(verbatim: L("Get the Android app")).font(.headline).fixedSize(horizontal: false, vertical: true)
                         Text(verbatim: L("Scan this code with your phone's camera to download PhoneDrop, then install it."))
                             .font(.callout).fixedSize(horizontal: false, vertical: true)
                         Link(L("Open the download page"), destination: AppState.androidAppURL).font(.callout)

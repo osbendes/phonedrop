@@ -32,7 +32,6 @@ final class AppState: ObservableObject {
     @Published var saveDir: URL
     @Published var port: UInt16 = 0
     @Published var ip: String = "–"
-    @Published var showPair = false
     /// The pairing card shows the app-download QR instead of the pairing QR
     @Published var qrShowsApp = false
     @Published var recentDirs: [String] = UserDefaults.standard.stringArray(forKey: "recentDirs") ?? []
@@ -153,6 +152,8 @@ final class AppState: ObservableObject {
     }
 
     private func deviceSeen(_ name: String) {
+        // A phone we haven't seen before just paired: the pairing window has done its job
+        if !devices.contains(name) { PairWindow.close() }
         devices.removeAll { $0 == name }
         devices.insert(name, at: 0)
         defaults.set(Array(devices.prefix(10)), forKey: "devices")
