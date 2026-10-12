@@ -14,20 +14,17 @@ Sırayla ilerle. [x] olanlar tamamlandı.
 - [x] Otomatik testler: Kotlin istemcisi gerçek Mac uygulamasına karşı test ediliyor (6 test + 1 GB yük testi)
 - [x] Gizlilik politikası (`docs/privacy.html`), mağaza metinleri ve görselleri (`docs/store/`)
 
-## 0. GitHub'da yayın (şimdilik tek kanal)
-Yerel git deposu ve ilk commit hazır. Sürüm dosyaları `release/` klasöründe (git'e eklenmez).
-1. https://github.com/new adresinde **phonedrop** adında herkese açık bir depo oluştur. README veya lisans ekleme, depo boş kalsın.
-2. Terminalde gönder:
-   `cd ~/Developer/PhoneDrop && git push -u origin main`
-3. **Releases › Draft a new release**:
-   - Tag: `v1.0.0-beta.1`
-   - Başlık: `PhoneDrop 1.0.0 beta 1`
-   - Açıklama: `release/NOTES.md` dosyasının içeriği
-   - Eklenecek dosyalar: `PhoneDrop.dmg`, `PhoneDrop.apk`, `SHA256SUMS.txt`
-   - "Pre-release" kutusunu **işaretleme**. İşaretlersen sitedeki indirme bağlantıları çalışmaz.
-4. **Settings › Pages**: Source = "Deploy from a branch", Branch = `main`, klasör = `/docs`. Site adresi https://osbendes.github.io/phonedrop/ olur.
+## 0. GitHub'da yayın (tamamlandı, 12 Ekim 2026)
+- Depo: https://github.com/osbendes/phonedrop (herkese açık, MIT lisanslı)
+- İndirme sayfası: https://osbendes.github.io/phonedrop/
+- İlk sürüm: `v1.0.0-beta.1` (`PhoneDrop.dmg`, `PhoneDrop.apk`, `SHA256SUMS.txt`)
 
-**İmza anahtarı:** Android anahtarı `~/Developer/PhoneDrop-signing/` klasöründe. Bu klasörü güvenli bir yere yedekle (örneğin şifreli bir disk ya da şifre yöneticisi). Anahtar kaybolursa kullanıcılar sonraki sürümleri eskisinin üzerine kuramaz.
+**Yeni sürüm yayınlamak için:** `mac/build.sh` ve `android/gradlew assembleRelease` ile derle, dosyaları `release/` klasörüne
+kopyala, sonra `gh release create vX.Y.Z release/PhoneDrop.dmg release/PhoneDrop.apk release/SHA256SUMS.txt` çalıştır.
+Dosya adlarını değiştirme: uygulamaların içindeki indirme bağlantıları bu adlara bağlı.
+
+**İmza anahtarı:** Android anahtarı `~/Developer/PhoneDrop-signing/` klasöründe. Bu klasörü güvenli bir yere yedekle.
+Anahtar kaybolursa kullanıcılar sonraki sürümleri eskisinin üzerine kuramaz.
 
 ## 1. Gerçek telefonda test
 Xiaomi, USB üzerinden uygulama kurulumunu engelliyor. Şu iki ayarı aç, gerisini ben yapayım:
