@@ -110,15 +110,21 @@ class MacLink(ctx: Context) {
         if (allowDirect && DirectLink.hasPermissions(app)) {
             if (System.currentTimeMillis() - lastDirectAttempt > 30_000) {
                 lastDirectAttempt = System.currentTimeMillis()
-                val (h, p) = try {
-                    direct.connect(progress)
+                val t = try {
+                    direct.connect(progress) { h, p -> clientFor(h, p)?.let { handshake(it) } ?: false }
                 } catch (e: DirectLink.DirectException) {
                     lastDirectError = e.reason
                     throw e
                 }
                 lastDirectError = null
-                if (handshake(MacClient("http://$h:$p", key))) {
-                    directHost = h to p
+                if (!t.hotspot) {
+                    // Same network after all: remember the Mac's current address
+                    prefs.host = t.host
+                    prefs.port = t.port
+                    return verified!!
+                }
+                if (handshake(MacClient("http://${t.host}:${t.port}", key))) {
+                    directHost = t.host to t.port
                     return verified!!
                 }
                 endDirect()

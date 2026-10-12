@@ -99,7 +99,9 @@ class MainActivity : Activity() {
             "com.osbendes.phonedrop.DIAG_DIRECT" -> thread {
                 val d = DirectLink(this, link.prefs)
                 val result = try {
-                    val (h, p) = d.connect { android.util.Log.i("PhoneDrop", "diag: " + getString(it)) }
+                    val t = d.connect({ android.util.Log.i("PhoneDrop", "diag: " + getString(it)) })
+                    val h = t.host
+                    val p = t.port
                     val c = com.phonedrop.app.core.MacClient("http://$h:$p", link.prefs.key!!)
                     val name = c.hello("diag").optString("name")
                     runCatching { c.post("/api/direct/end", timeoutMs = 3000) }
@@ -131,6 +133,7 @@ class MainActivity : Activity() {
         refreshMac()
         handler.post(tick)
         askDirectPermissions()
+        Wake.register(this)
     }
 
     /** Asks once, after pairing, for what direct mode needs. Denying only disables that fallback. */

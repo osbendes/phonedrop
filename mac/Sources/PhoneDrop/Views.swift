@@ -13,6 +13,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
         if !CommandLine.arguments.contains("--snapshot") { showWindow() }
+        // Test aid: `open PhoneDrop.app --args --send` presses Send right after launch
+        if CommandLine.arguments.contains("--send") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { AppState.shared.sendOutbox() }
+        }
     }
 
     /// "Open With > PhoneDrop" and files dropped on the Dock icon.
@@ -395,8 +399,16 @@ struct OutboxView: View {
                 if !state.outbox.isEmpty {
                     Button(L("Clear All")) { state.clearOutbox() }
                 }
+                Spacer()
+                Button(state.sending ? L("Waiting for Phone…") : L("Send")) { state.sendOutbox() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(state.outbox.isEmpty || state.sending)
             }
             .controlSize(.small)
+            if state.sending {
+                Text(verbatim: L("Your phone downloads these by itself if Bluetooth is on. If nothing happens, open PhoneDrop on the phone."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

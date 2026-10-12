@@ -37,6 +37,9 @@ final class AppState: ObservableObject {
     @Published var recentDirs: [String] = UserDefaults.standard.stringArray(forKey: "recentDirs") ?? []
     @Published var dropTargeted = false
     @Published var directSSID: String?
+    /// "Send" was pressed and the phone hasn't fetched everything yet
+    @Published var sending = false
+    private var sendDeadline = Date.distantPast
     @Published var allowDirectOnWiFi = UserDefaults.standard.bool(forKey: "allowDirectOnWiFi") {
         didSet { defaults.set(allowDirectOnWiFi, forKey: "allowDirectOnWiFi") }
     }
@@ -168,6 +171,11 @@ final class AppState: ObservableObject {
         }
         let newIP = Self.localIPv4() ?? "–"
         if newIP != ip { ip = newIP }
+        if sending {
+            // Keep signalling while files are moving; give up two minutes after the last activity
+            if snap.contains(where: { $0.direction == .outgoing }) { sendDeadline = Date().addingTimeInterval(120) }
+            if outbox.isEmpty || Date() > sendDeadline { stopSending() }
+        }
         // Keep the Mac awake while anything is moving, and 60 s after
         if !snap.isEmpty {
             idleSince = nil
@@ -258,6 +266,19 @@ final class AppState: ObservableObject {
             }
         }
         saveOutbox()
+    }
+
+    /// Asks the phone to download the list now, by flagging it in the Bluetooth advertisement.
+    func sendOutbox() {
+        guard !outbox.isEmpty else { return }
+        sending = true
+        sendDeadline = Date().addingTimeInterval(120)
+        direct.setWaking(true)
+    }
+
+    private func stopSending() {
+        sending = false
+        direct.setWaking(false)
     }
 
     func clearOutbox() {

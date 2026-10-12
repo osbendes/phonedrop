@@ -41,6 +41,8 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
         val INFO: UUID = UUID.fromString("C0DE0002$SUFFIX")
         val JOIN: UUID = UUID.fromString("C0DE0003$SUFFIX")
         val STATUS: UUID = UUID.fromString("C0DE0004$SUFFIX")
+        /** The Mac advertises this instead of [SERVICE] while it wants the phone to fetch its outbox. */
+        val WAKE: UUID = UUID.fromString("C0DE0005$SUFFIX")
 
         /** Runtime permissions direct mode needs on this Android version. */
         fun permissions(): Array<String> = buildList {
@@ -61,6 +63,9 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
         }
     }
 
+    /** Where to reach the Mac: over the phone's own hotspot, or on the network both are already on. */
+    class Target(val host: String, val port: Int, val hotspot: Boolean)
+
     /** Failure with a user-facing string resource. */
     class DirectException(val reason: Int) : IOException("direct mode failed")
 
@@ -74,7 +79,7 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
      * resources to show while it works.
      */
     @SuppressLint("MissingPermission")
-    fun connect(progress: (Int) -> Unit): Pair<String, Int> {
+    fun connect(progress: (Int) -> Unit, tryLan: (String, Int) -> Boolean = { _, _ -> false }): Target {
         val key = prefs.key ?: throw DirectException(R.string.status_searching)
         if (!hasPermissions(app)) throw DirectException(R.string.direct_no_permission)
         val adapter = app.getSystemService(BluetoothManager::class.java)?.adapter
@@ -97,6 +102,19 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
                 Log.i(TAG, "direct: ${device.address} kid=$kid (ours=${prefs.kid})")
                 if (kid != prefs.kid) continue
 
+                // The Mac says where it is on its network. If we can reach it there, the stored address
+                // was just stale and no hotspot is needed.
+                runCatching { JSONObject(crypto.open(gatt.read(STATUS), "pd2 ble status").decodeToString()) }
+                    .getOrNull()?.let { st ->
+                        val ip = st.optString("lan")
+                        val port = st.optInt("lp")
+                        if (ip.isNotEmpty() && port > 0) {
+                            val ok = tryLan(ip, port)
+                            Log.i(TAG, "direct: Mac is at $ip:$port on its network, reachable=$ok")
+                            if (ok) return Target(ip, port, hotspot = false)
+                        }
+                    }
+
                 progress(R.string.direct_starting)
                 val (ssid, pass) = reservation?.let { credentials(it) } ?: startHotspot()
                 val join = JSONObject().put("s", ssid).put("p", pass).put("t", System.currentTimeMillis() / 1000)
@@ -110,7 +128,7 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
                     val st = JSONObject(crypto.open(gatt.read(STATUS), "pd2 ble status").decodeToString())
                     Log.i(TAG, "direct: status ${st.optString("st")} ${st.optString("e")}")
                     when (st.optString("st")) {
-                        "ready" -> return st.getString("ip") to st.getInt("p")
+                        "ready" -> return Target(st.getString("ip"), st.getInt("p"), hotspot = true)
                         // The Mac went back to idle without reaching "ready": the join was abandoned
                         "idle" -> if (++idleReads >= 3) { close(); throw DirectException(R.string.direct_failed) }
                         "error" -> {
@@ -231,9 +249,10 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
 
             override fun onScanFailed(errorCode: Int) { Log.w(TAG, "direct: scan failed $errorCode") }
         }
-        val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(SERVICE)).build()
+        // The Mac advertises either UUID; its GATT service is the same in both cases
+        val filters = listOf(SERVICE, WAKE).map { ScanFilter.Builder().setServiceUuid(ParcelUuid(it)).build() }
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
-        scanner.startScan(listOf(filter), settings, cb)
+        scanner.startScan(filters, settings, cb)
         // Stop early once something shows up, leaving a moment for other Macs nearby
         val end = System.currentTimeMillis() + timeoutMs
         var firstSeen = 0L

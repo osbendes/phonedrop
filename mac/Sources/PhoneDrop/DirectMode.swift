@@ -13,6 +13,8 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     static let infoUUID = CBUUID(string: "C0DE0002" + suffix)
     static let joinUUID = CBUUID(string: "C0DE0003" + suffix)
     static let statusUUID = CBUUID(string: "C0DE0004" + suffix)
+    /// Advertised instead of `serviceUUID` while the Mac has files it wants the phone to fetch now
+    static let wakeUUID = CBUUID(string: "C0DE0005" + suffix)
 
     var key: () -> Data = { Data() }
     var port: () -> UInt16 = { 0 }
@@ -27,6 +29,27 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     private var joinedSSID: String?
 
     private var watchdog: DispatchSourceTimer?
+    private var waking = false
+    private var wifiInterface: String?
+
+    /// Tells nearby paired phones (which scan for `wakeUUID` in the background) to fetch the outbox.
+    func setWaking(_ on: Bool) {
+        q.async {
+            guard self.waking != on else { return }
+            self.waking = on
+            log.info("wake signal \(on ? "on" : "off", privacy: .public)")
+            if let p = self.manager, p.state == .poweredOn {
+                p.stopAdvertising()
+                self.advertise(p)
+            }
+        }
+    }
+
+    /// One 128-bit UUID is all that fits in an advertisement next to the name, so it's one or the other.
+    private func advertise(_ p: CBPeripheralManager) {
+        p.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [waking ? Self.wakeUUID : Self.serviceUUID],
+                            CBAdvertisementDataLocalNameKey: "PhoneDrop"])
+    }
 
     func start() {
         manager = CBPeripheralManager(delegate: self, queue: q)
@@ -58,8 +81,7 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
 
     func peripheralManager(_ p: CBPeripheralManager, didAdd service: CBService, error: Error?) {
         guard error == nil else { return log.error("add service: \(error!.localizedDescription, privacy: .public)") }
-        p.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [Self.serviceUUID],
-                            CBAdvertisementDataLocalNameKey: "PhoneDrop"])
+        advertise(p)
     }
 
     func peripheralManagerDidStartAdvertising(_ p: CBPeripheralManager, error: Error?) {
@@ -107,6 +129,12 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
         var s = status
         lock.unlock()
         s["t"] = Int(Date().timeIntervalSince1970)
+        // Where the Mac is on its current network, so the phone can try that before starting a hotspot
+        if wifiInterface == nil { wifiInterface = WiFi.interface() }
+        if let iface = wifiInterface, let ip = WiFi.ipv4(iface) {
+            s["lan"] = ip
+            s["lp"] = Int(port())
+        }
         guard let json = try? JSONSerialization.data(withJSONObject: s),
               let box = try? PDCrypto.seal(json, key: SymmetricKey(data: key()), aad: "pd2 ble status") else { return Data() }
         return box

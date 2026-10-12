@@ -79,6 +79,7 @@ class TransferService : Service() {
         private const val ACTION_UPLOAD = "upload"
         private const val ACTION_DOWNLOAD = "download"
         private const val ACTION_STOP = "stop"
+        private const val ACTION_FETCH = "fetch"
         private const val CHANNEL = "transfers"
         private const val CHANNEL_DONE = "done"
         private const val NOTIF_ID = 1
@@ -109,6 +110,11 @@ class TransferService : Service() {
         fun download(ctx: Context, fileId: String, name: String, size: Long) {
             ctx.startForegroundService(Intent(ctx, TransferService::class.java).setAction(ACTION_DOWNLOAD)
                 .putExtra("id", fileId).putExtra("name", name).putExtra("size", size))
+        }
+
+        /** Downloads everything the Mac currently offers (used when the Mac presses "Send"). */
+        fun fetch(ctx: Context) {
+            ctx.startForegroundService(Intent(ctx, TransferService::class.java).setAction(ACTION_FETCH))
         }
 
         fun stopAll(ctx: Context) {
@@ -153,6 +159,25 @@ class TransferService : Service() {
                 Transfers.items.add(Transfers.Item(Transfers.Direction.DOWN, intent.getStringExtra("name") ?: "file",
                     intent.getLongExtra("size", 0), fileId = intent.getStringExtra("id")))
                 startWorker()
+            }
+            ACTION_FETCH -> thread(name = "fetch") {
+                val queued = runCatching {
+                    val files = link.client(allowDirect = true).outbox().getJSONArray("files")
+                    var n = 0
+                    for (k in 0 until files.length()) {
+                        val f = files.getJSONObject(k)
+                        val id = f.getString("id")
+                        // Skip what's already downloading or was just downloaded
+                        if (Transfers.items.any { it.fileId == id && it.state != Transfers.State.FAILED &&
+                                it.state != Transfers.State.CANCELLED }) continue
+                        Transfers.items.add(Transfers.Item(Transfers.Direction.DOWN, f.getString("name"),
+                            f.getLong("size"), fileId = id))
+                        n++
+                    }
+                    n
+                }.getOrDefault(0)
+                android.util.Log.i("PhoneDrop", "wake: queued $queued download(s)")
+                if (queued > 0) startWorker() else if (worker == null) shutdown()
             }
             else -> if (worker == null) shutdown()
         }

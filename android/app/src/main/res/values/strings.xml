@@ -116,4 +116,6 @@
     <string name="share_link">Share link</string>
     <string name="copy_link">Copy</string>
     <string name="toast_copied">Link copied</string>
+    <string name="notif_mac_has_files">Your Mac has files for you</string>
+    <string name="notif_tap_to_download">Tap to open PhoneDrop and download them.</string>
 </resources>

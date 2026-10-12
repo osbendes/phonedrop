@@ -103,6 +103,9 @@ carries only the handshake; the files still go over Wi-Fi.
    **STATUS** (`C0DE0004-…`, read):
    `seal({"st": "joining" | "ready" | "error", "ip": "...", "p": port, "e": reason, "t": unix seconds}, "pd2 ble status")`.
    The phone polls STATUS until it reads `ready` or `error`.
+   STATUS always carries `lan` and `lp` too: the Mac's address and port on the network it is on right
+   now. Before starting its hotspot (step 3), the phone reads STATUS once and tries that address; if
+   the Mac answers there, the phone uses the normal network and skips the rest.
 6. The transfer runs over HTTP exactly as on a normal network.
 7. When the queue is empty, the phone sends `POST /api/direct/end` and stops the hotspot. The Mac then
    forgets the hotspot network and macOS rejoins its usual Wi-Fi by itself.
@@ -111,4 +114,13 @@ If the Mac is already on a Wi-Fi network, it refuses to switch (`"e": "on-wifi"`
 turned on "Allow Direct Connection on Wi-Fi". That way a phone can't pull a working Mac off its network
 without the user agreeing to it.
 
-All four characteristic UUIDs share the suffix `-9D4B-4F2A-8E61-50484F4E4544`.
+## Sending from the Mac
+
+The phone normally pulls: it lists the outbox and downloads what the user taps. When the user presses
+**Send** on the Mac, the Mac advertises `C0DE0005-…` *instead of* `C0DE0001-…` (only one 128-bit UUID fits
+in an advertisement) until the outbox is empty, or for two minutes after the last activity. The phone
+keeps a low-power background scan for `C0DE0005-…` registered with Android. When it fires, the app
+lists the outbox of its paired Mac and downloads everything. A Mac the phone isn't paired with can
+trigger the scan, but the phone only ever talks to its own Mac, so nothing is downloaded.
+
+All characteristic and service UUIDs share the suffix `-9D4B-4F2A-8E61-50484F4E4544`.

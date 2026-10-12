@@ -106,4 +106,6 @@
     <string name="share_link">Bağlantıyı paylaş</string>
     <string name="copy_link">Kopyala</string>
     <string name="toast_copied">Bağlantı kopyalandı</string>
+    <string name="notif_mac_has_files">Mac\'in sana dosya gönderdi</string>
+    <string name="notif_tap_to_download">PhoneDrop\'u açıp indirmek için dokun.</string>
 </resources>
