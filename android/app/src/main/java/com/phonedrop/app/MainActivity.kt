@@ -31,7 +31,8 @@ import org.json.JSONObject
 class MainActivity : Activity() {
 
     companion object {
-        const val MAC_DOWNLOAD_URL = "https://github.com/osbendes/phonedrop/releases/latest"
+        /** Download page with the Mac app; short enough to type on the Mac. */
+        const val MAC_DOWNLOAD_URL = "https://osbendes.github.io/phonedrop/"
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -59,6 +60,8 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.pickGallery).setOnClickListener { pickGallery() }
         findViewById<Button>(R.id.pickFiles).setOnClickListener { pickFiles() }
         findViewById<View>(R.id.outboxRefresh).setOnClickListener { refreshMac() }
+        findViewById<View>(R.id.destBtn).setOnClickListener { showFolderDialog() }
+        findViewById<View>(R.id.getMacApp).setOnClickListener { showMacAppDialog() }
         findViewById<View>(R.id.batteryBtn).setOnClickListener {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         }
@@ -125,6 +128,7 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.batteryCard).visibility =
             if (pm.isIgnoringBatteryOptimizations(packageName)) View.GONE else View.VISIBLE
         renderMac()
+        renderDest()
         refreshMac()
         handler.post(tick)
         askDirectPermissions()
@@ -155,11 +159,115 @@ class MainActivity : Activity() {
             .setTitle(R.string.pair_dialog_title)
             .setMessage(R.string.pair_dialog_msg)
             .setPositiveButton(R.string.pair_scan) { _, _ -> scan() }
-            .setNeutralButton(R.string.pair_get_mac) { _, _ ->
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(MAC_DOWNLOAD_URL)))
+            .setNeutralButton(R.string.pair_get_mac) { _, _ -> showMacAppDialog() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** The Mac app's download page as a QR code, with share and copy. */
+    private fun showMacAppDialog() {
+        val d = resources.displayMetrics.density
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            setPadding((24 * d).toInt(), (12 * d).toInt(), (24 * d).toInt(), 0)
+        }
+        box.addView(TextView(this).apply { setText(R.string.mac_app_msg); textSize = 15f })
+        qrBitmap(MAC_DOWNLOAD_URL, (220 * d).toInt())?.let { bmp ->
+            box.addView(android.widget.ImageView(this).apply {
+                setImageBitmap(bmp)
+                layoutParams = LinearLayout.LayoutParams((220 * d).toInt(), (220 * d).toInt()).apply { topMargin = (16 * d).toInt() }
+            })
+        }
+        box.addView(TextView(this).apply {
+            text = MAC_DOWNLOAD_URL.removePrefix("https://").trimEnd('/')
+            textSize = 17f; paint.isFakeBoldText = true; setTextIsSelectable(true)
+            setPadding(0, (12 * d).toInt(), 0, 0)
+        })
+        AlertDialog.Builder(this)
+            .setTitle(R.string.pair_get_mac)
+            .setView(box)
+            .setPositiveButton(R.string.share_link) { _, _ ->
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
+                    .putExtra(Intent.EXTRA_TEXT, MAC_DOWNLOAD_URL), null))
+            }
+            .setNeutralButton(R.string.copy_link) { _, _ ->
+                getSystemService(android.content.ClipboardManager::class.java)
+                    .setPrimaryClip(android.content.ClipData.newPlainText("PhoneDrop", MAC_DOWNLOAD_URL))
+                Toast.makeText(this, R.string.toast_copied, Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun qrBitmap(text: String, size: Int): android.graphics.Bitmap? = try {
+        val m = com.google.zxing.qrcode.QRCodeWriter().encode(text, com.google.zxing.BarcodeFormat.QR_CODE, 0, 0,
+            mapOf(com.google.zxing.EncodeHintType.MARGIN to 2))
+        val scale = maxOf(1, size / m.width)
+        val px = IntArray(m.width * scale * m.height * scale)
+        val w = m.width * scale
+        for (y in 0 until m.height * scale) for (x in 0 until w) {
+            px[y * w + x] = if (m[x / scale, y / scale]) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        }
+        android.graphics.Bitmap.createBitmap(px, w, m.height * scale, android.graphics.Bitmap.Config.ARGB_8888)
+    } catch (e: Exception) {
+        null
+    }
+
+    // ---------------- destination folder ----------------
+
+    private fun renderDest() {
+        val folder = link.prefs.folder
+        findViewById<TextView>(R.id.destFolder).text = folder.ifEmpty { getString(R.string.dest_default) }
+    }
+
+    /** Lets the user type a subfolder or pick one that already exists on the Mac. */
+    private fun showFolderDialog() {
+        val d = resources.displayMetrics.density
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((24 * d).toInt(), (8 * d).toInt(), (24 * d).toInt(), 0)
+        }
+        box.addView(TextView(this).apply { setText(R.string.dest_dialog_msg); textSize = 14f })
+        val input = android.widget.EditText(this).apply {
+            setText(link.prefs.folder); setHint(R.string.dest_dialog_hint); setSingleLine()
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+        box.addView(input)
+        val existing = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(android.widget.ScrollView(this).apply {
+            addView(existing)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = (8 * d).toInt() }
+        })
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.dest_dialog_title)
+            .setView(box)
+            .setPositiveButton(R.string.dest_save) { _, _ ->
+                link.prefs.folder = input.text.toString().trim().trim('/')
+                renderDest()
+            }
+            .setNeutralButton(R.string.dest_none) { _, _ -> link.prefs.folder = ""; renderDest() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+        if (!link.prefs.paired) return
+        thread {
+            val names = runCatching {
+                val arr = link.client().folders().getJSONArray("folders")
+                (0 until arr.length()).map { arr.getString(it) }
+            }.getOrDefault(emptyList())
+            runOnUiThread {
+                if (!dialog.isShowing || names.isEmpty()) return@runOnUiThread
+                existing.addView(TextView(this).apply {
+                    setText(R.string.dest_existing); setTextColor(getColor(R.color.mute)); textSize = 13f
+                    setPadding(0, (8 * d).toInt(), 0, (4 * d).toInt())
+                })
+                for (n in names.take(12)) existing.addView(TextView(this).apply {
+                    text = n; textSize = 16f; setTextColor(getColor(R.color.acc))
+                    setPadding(0, (10 * d).toInt(), 0, (10 * d).toInt())
+                    setOnClickListener { input.setText(n); input.setSelection(n.length) }
+                })
+            }
+        }
     }
 
     private fun showMacMenu() {

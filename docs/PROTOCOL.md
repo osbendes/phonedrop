@@ -58,7 +58,8 @@ Successful JSON responses are sealed.
 | Method | Path                         | Request body            | Response body |
 |--------|------------------------------|-------------------------|---------------|
 | POST   | `/api/hello`                 | `{device}`              | `{name, v}`   |
-| POST   | `/api/init`                  | `{name,size,mtime,chunk}` | `{id,chunk,done:[i]}` |
+| POST   | `/api/init`                  | `{name,size,mtime,chunk,dir?}` | `{id,chunk,done:[i]}` |
+| POST   | `/api/folders`               | –                       | `{root, folders:[name]}` |
 | PUT    | `/api/chunk?id=&i=`          | sealed chunk            | `{}`          |
 | POST   | `/api/finish?id=`            | –                       | `{name}`      |
 | POST   | `/api/cancel?id=`            | –                       | `{}`          |
@@ -75,12 +76,17 @@ Successful JSON responses are sealed.
 - `mtime` is in Unix milliseconds, or 0 if unknown. The Mac sets it as the
   file's modification date.
 - `finish` returns 409 while chunks are missing.
+- `dir` is an optional subfolder of the Mac's download folder, such as `Wedding 2026` or `Trips/Rome`.
+  The Mac drops empty and `..` parts, cleans each name and keeps at most four levels, so a file can
+  never land outside the download folder. `/api/folders` lists the existing top-level subfolders,
+  newest first.
 
 ### Downloads (Mac → phone)
 
 The plaintext is split into 1 MiB frames. Each frame is sent as
 `u32 big-endian box length || sealed box`. `from` lets an interrupted download
-resume at a frame boundary.
+resume at a frame boundary. When a stream reaches the end of the file, the Mac removes the
+file from its outbox.
 
 ## Direct mode (no router)
 

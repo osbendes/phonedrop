@@ -19,8 +19,9 @@ class ShareActivity : Activity() {
             }
             else -> {
                 TransferService.upload(this, uris)
-                val msg = if (uris.size == 1) getString(R.string.toast_sending_one)
-                else getString(R.string.toast_sending_many, uris.size)
+                val folder = Prefs(this).folder
+                val msg = (if (uris.size == 1) getString(R.string.toast_sending_one)
+                else getString(R.string.toast_sending_many, uris.size)) + (if (folder.isEmpty()) "" else "\n→ $folder")
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             }
         }

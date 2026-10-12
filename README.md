@@ -45,7 +45,8 @@ Without that file, release builds use the debug key.
 implementations of the protocol against each other. To run it, start `PhoneDrop.app` and create `/tmp/phonedrop-test.json`:
 
 ```json
-{"base": "http://127.0.0.1:8765", "saveDir": "<download folder>", "outboxId": "<id>", "outboxPath": "<file in outbox>"}
+{"base": "http://127.0.0.1:8765", "saveDir": "<download folder>",
+ "outboxId": "<id>", "outboxPath": "<file in outbox>", "outboxId2": "<id>", "outboxPath2": "<another file>"}
 ```
 
 Then run `./gradlew testDebugUnitTest`. The 1 GiB load test only runs when `/tmp/phonedrop-load` exists.

@@ -45,6 +45,7 @@ object Transfers {
         val source: Uri? = null,       // UP: file to read
         val tempFile: File? = null,    // UP: copy made for non-seekable sources
         val fileId: String? = null,    // DOWN: id in the Mac's outbox
+        val folder: String = "",       // UP: subfolder on the Mac
     ) {
         val key = nextKey.incrementAndGet()
         @Volatile var state = State.WAITING
@@ -208,7 +209,7 @@ class TransferService : Service() {
         } else if (size < 0) {
             size = contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0
         }
-        Transfers.items.add(Transfers.Item(Transfers.Direction.UP, name, size, mtime, src, temp))
+        Transfers.items.add(Transfers.Item(Transfers.Direction.UP, name, size, mtime, src, temp, folder = link.prefs.folder))
     }
 
     private fun seekable(uri: Uri): Boolean = try {
@@ -256,7 +257,7 @@ class TransferService : Service() {
     // ---------------- upload ----------------
 
     private fun upload(item: Transfers.Item) {
-        val init = retrying(item) { it.init(item.name, item.size, item.mtime, MacClient.CHUNK) }
+        val init = retrying(item) { it.init(item.name, item.size, item.mtime, MacClient.CHUNK, item.folder) }
         val id = init.getString("id")
         val chunk = init.getInt("chunk")
         val n = ((item.size + chunk - 1) / chunk).toInt()

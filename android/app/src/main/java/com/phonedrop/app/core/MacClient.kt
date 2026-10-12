@@ -73,8 +73,13 @@ class MacClient(
     fun hello(device: String, timeoutMs: Int = 4_000): JSONObject =
         post("/api/hello", body = JSONObject().put("device", device), timeoutMs = timeoutMs)
 
-    fun init(name: String, size: Long, mtime: Long, chunk: Int): JSONObject =
-        post("/api/init", body = JSONObject().put("name", name).put("size", size).put("mtime", mtime).put("chunk", chunk))
+    /** [dir] is an optional subfolder of the Mac's download folder, e.g. "Wedding 2026". */
+    fun init(name: String, size: Long, mtime: Long, chunk: Int, dir: String = ""): JSONObject =
+        post("/api/init", body = JSONObject().put("name", name).put("size", size).put("mtime", mtime)
+            .put("chunk", chunk).put("dir", dir))
+
+    /** Subfolders that already exist in the Mac's download folder. */
+    fun folders(): JSONObject = post("/api/folders")
 
     fun finish(id: String): JSONObject = post("/api/finish", "?id=$id")
 

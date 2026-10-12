@@ -89,6 +89,7 @@ struct MenuContent: View {
                     ForEach(state.transfers) { TransferRow(t: $0) }
                 }
             }
+            section(L("Save to")) { SaveLocationRow() }
             section(L("Received")) {
                 if state.recent.isEmpty {
                     Text(verbatim: L("Files from your phone appear here.")).foregroundStyle(.secondary).font(.callout)
@@ -107,7 +108,6 @@ struct MenuContent: View {
                         .help(L("Show in Finder"))
                     }
                 }
-                Button(L("Open Folder")) { state.openSaveDir() }.controlSize(.small)
             }
             OutboxView()
         }
@@ -120,7 +120,8 @@ struct MenuContent: View {
             Text(verbatim: "PhoneDrop").font(.headline)
             Spacer()
             Menu {
-                Button(L("Pair a Phone…")) { state.showPair.toggle() }
+                Button(L("Pair a Phone…")) { state.qrShowsApp = false; state.showPair.toggle() }
+                Button(L("Get the Android App…")) { state.qrShowsApp = true; state.showPair = true }
                 Button(L("Change Download Folder…")) { state.chooseSaveDir() }
                 Toggle(L("Allow Direct Connection on Wi-Fi"), isOn: $state.allowDirectOnWiFi)
                 Toggle(L("Open at Login"), isOn: Binding(get: { state.launchAtLogin }, set: { state.setLaunchAtLogin($0) }))
@@ -170,31 +171,88 @@ struct MenuContent: View {
     }
 }
 
+/// Where incoming files go, with a menu to change it.
+struct SaveLocationRow: View {
+    @EnvironmentObject var state: AppState
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "folder.fill").foregroundStyle(.blue)
+            Button { state.openSaveDir() } label: {
+                Text(verbatim: AppState.displayPath(state.saveDir.path)).lineLimit(1).truncationMode(.head)
+            }
+            .buttonStyle(.plain)
+            .help(L("Open Folder"))
+            Spacer()
+            Menu(L("Change")) {
+                Button(L("Choose Folder…")) { state.chooseSaveDir() }
+                if state.saveDir.path != AppState.defaultSaveDir.path {
+                    Button(String(format: L("Default (%@)"), AppState.displayPath(AppState.defaultSaveDir.path))) {
+                        state.setSaveDir(AppState.defaultSaveDir)
+                    }
+                }
+                if !state.recentDirs.isEmpty {
+                    Divider()
+                    ForEach(state.recentDirs, id: \.self) { path in
+                        Button(AppState.displayPath(path)) { state.setSaveDir(URL(fileURLWithPath: path)) }
+                    }
+                }
+                Divider()
+                Button(L("Open Folder")) { state.openSaveDir() }
+            }
+            .controlSize(.small)
+            .fixedSize()
+        }
+    }
+}
+
 struct PairView: View {
     @EnvironmentObject var state: AppState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Picker("", selection: $state.qrShowsApp) {
+                Text(verbatim: L("Pair")).tag(false)
+                Text(verbatim: L("Get the App")).tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
             HStack(alignment: .top, spacing: 14) {
-                if state.port != 0, let img = AppState.qrImage(state.pairURL, size: 150) {
-                    Image(nsImage: img).interpolation(.none).resizable().frame(width: 150, height: 150)
-                        .padding(6).background(.white).clipShape(RoundedRectangle(cornerRadius: 8))
+                if state.qrShowsApp, let img = AppState.qrImage(AppState.androidApkURL, size: 150) {
+                    qr(img)
+                } else if state.port != 0, let img = AppState.qrImage(state.pairURL, size: 150) {
+                    qr(img)
                 } else {
                     ProgressView().frame(width: 162, height: 162)
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(verbatim: L("Pair your phone")).font(.headline)
-                    step(1, L("Install the PhoneDrop Android app."))
-                    step(2, L("Open it and tap “Pair with Mac”."))
-                    step(3, L("Scan this code."))
-                    Link(L("Get the Android app"), destination: AppState.androidAppURL).font(.callout)
+                if state.qrShowsApp {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(verbatim: L("Get the Android app")).font(.headline)
+                        Text(verbatim: L("Scan this code with your phone's camera to download PhoneDrop, then install it."))
+                            .font(.callout).fixedSize(horizontal: false, vertical: true)
+                        Link(L("Open the download page"), destination: AppState.androidAppURL).font(.callout)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(verbatim: L("Pair your phone")).font(.headline)
+                        step(1, L("Install the PhoneDrop Android app."))
+                        step(2, L("Open it and tap “Pair with Mac”."))
+                        step(3, L("Scan this code."))
+                    }
                 }
             }
-            Text(verbatim: L("Phone and Mac must be on the same Wi-Fi network. Anyone who scans this code can send files to this Mac."))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !state.qrShowsApp {
+                Text(verbatim: L("Phone and Mac must be on the same Wi-Fi network. Anyone who scans this code can send files to this Mac."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(12)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func qr(_ img: NSImage) -> some View {
+        Image(nsImage: img).interpolation(.none).resizable().frame(width: 150, height: 150)
+            .padding(6).background(.white).clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func step(_ n: Int, _ text: String) -> some View {

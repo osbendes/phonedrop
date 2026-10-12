@@ -32,6 +32,10 @@ class Prefs(ctx: Context) {
     var macName: String?
         get() = sp.getString("macName", null)
         set(v) = sp.edit().putString("macName", v).apply()
+    /** Subfolder of the Mac's download folder that uploads go to ("" = the folder itself). */
+    var folder: String
+        get() = sp.getString("folder", "") ?: ""
+        set(v) = sp.edit().putString("folder", v).apply()
     val key: ByteArray?
         get() = sp.getString("key", null)?.let { Crypto.unb64url(it) }
 

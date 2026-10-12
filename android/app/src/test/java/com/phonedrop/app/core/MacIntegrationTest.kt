@@ -15,7 +15,8 @@ import org.junit.Test
 
 /**
  * Talks to a running PhoneDrop Mac app. Skipped unless /tmp/phonedrop-test.json exists:
- * {"base": "http://127.0.0.1:8765", "saveDir": "...", "outboxId": "...", "outboxPath": "..."}
+ * {"base": "http://127.0.0.1:8765", "saveDir": "...", "outboxId": "...", "outboxPath": "...",
+ *  "outboxId2": "...", "outboxPath2": "..."}  (two different files in the Mac's "Send to Phone" list)
  * The key is read from ~/Library/Application Support/PhoneDrop/key.
  */
 class MacIntegrationTest {
@@ -103,20 +104,45 @@ class MacIntegrationTest {
     }
 
     @Test
-    fun downloadFromOutboxIsIntactAndResumable() {
+    fun downloadIsIntactResumableAndLeavesTheOutbox() {
+        fun listed(id: String): Boolean {
+            val files = client.outbox().getJSONArray("files")
+            return (0 until files.length()).any { files.getJSONObject(it).getString("id") == id }
+        }
         val fid = cfg.getString("outboxId")
         val expected = File(cfg.getString("outboxPath")).readBytes()
-        val listed = client.outbox().getJSONArray("files")
-        assertTrue((0 until listed.length()).any { listed.getJSONObject(it).getString("id") == fid })
+        assertTrue(listed(fid))
 
         val full = ByteArrayOutputStream()
         client.download(fid, 0) { _, b -> full.write(b) }
         assertArrayEquals(sha(expected), sha(full.toByteArray()))
+        // Once the phone has the whole file, the Mac stops offering it
+        Thread.sleep(500)
+        assertTrue(!listed(fid))
 
-        // Resume from frame 2
+        // Resuming from frame 2 (second fixture file)
+        val fid2 = cfg.getString("outboxId2")
+        val expected2 = File(cfg.getString("outboxPath2")).readBytes()
         val tail = ByteArrayOutputStream()
-        client.download(fid, 2) { _, b -> tail.write(b) }
-        assertArrayEquals(sha(expected.copyOfRange(2 * MacClient.FRAME, expected.size)), sha(tail.toByteArray()))
+        client.download(fid2, 2) { _, b -> tail.write(b) }
+        assertArrayEquals(sha(expected2.copyOfRange(2 * MacClient.FRAME, expected2.size)), sha(tail.toByteArray()))
+    }
+
+    @Test
+    fun uploadGoesIntoRequestedSubfolder() {
+        val chunk = 1 shl 20
+        val data = ByteArray(chunk + 7).also { Random(3).nextBytes(it) }
+        val name = "pd-dir-${System.nanoTime()}.bin"
+        // "../" and empty parts must not escape the download folder
+        val id = client.init(name, data.size.toLong(), 0, chunk, "../pd-test-dir//Sub ").getString("id")
+        client.putChunk(id, 0, data.copyOfRange(0, chunk), chunk)
+        client.putChunk(id, 1, data.copyOfRange(chunk, data.size), 7)
+        val saved = client.finish(id).getString("name")
+        val dir = File(cfg.getString("saveDir"), "pd-test-dir/Sub")
+        assertArrayEquals(sha(data), sha(File(dir, saved).readBytes()))
+        val folders = client.folders().getJSONArray("folders")
+        assertTrue((0 until folders.length()).any { folders.getString(it) == "pd-test-dir" })
+        File(cfg.getString("saveDir"), "pd-test-dir").deleteRecursively()
     }
 
     @Test

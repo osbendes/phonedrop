@@ -93,4 +93,17 @@
     <string name="direct_mac_on_wifi">Mac başka bir Wi-Fi ağına bağlı. Aynı ağa bağlan ya da Mac\'te “Wi-Fi\'dayken Doğrudan Bağlantıya İzin Ver”i aç.</string>
     <string name="direct_failed">Mac\'e doğrudan bağlanılamadı. Yeniden deneniyor…</string>
     <string name="direct_hotspot_failed">Telefon geçici Wi-Fi ağını açamadı. Hotspot açıksa kapatıp tekrar dene.</string>
+
+    <string name="dest_title">Mac\'teki klasör</string>
+    <string name="dest_default">Kayıt klasörü (alt klasör yok)</string>
+    <string name="dest_dialog_title">Alt klasöre kaydet</string>
+    <string name="dest_dialog_msg">Gönderdiğin dosyalar Mac\'teki kayıt klasörünün bu alt klasörüne gider. Sen değiştirene kadar ayarlı kalır.</string>
+    <string name="dest_dialog_hint">Örn. Düğün 2026</string>
+    <string name="dest_existing">Mac\'teki klasörler</string>
+    <string name="dest_save">Kaydet</string>
+    <string name="dest_none">Alt klasör yok</string>
+    <string name="mac_app_msg">Bu adresi Mac\'inde aç ya da kodu başka bir cihazla okut.</string>
+    <string name="share_link">Bağlantıyı paylaş</string>
+    <string name="copy_link">Kopyala</string>
+    <string name="toast_copied">Bağlantı kopyalandı</string>
 </resources>

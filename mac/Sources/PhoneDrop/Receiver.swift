@@ -18,6 +18,8 @@ final class IncomingTransfer {
     let mtime: Int64
     let chunk: Int
     var done: Set<Int>
+    /// Subfolder of the download folder chosen on the phone ("" = the download folder itself).
+    var folder = ""
     var live: Int64 = 0
     var samples: [(Date, Int)] = []
     var updated = Date()
@@ -138,6 +140,7 @@ final class Receiver: HTTPHandler {
         case ("POST", "/api/finish"): respond(finish(req))
         case ("POST", "/api/cancel"): respond(cancel(req))
         case ("POST", "/api/outbox"): respond(outbox(req))
+        case ("POST", "/api/folders"): respond(folders(req))
         case ("GET", "/api/dl"): respond(download(req))
         case ("POST", "/api/direct/end"):
             respond(sealed(req, [:]))
@@ -193,6 +196,7 @@ final class Receiver: HTTPHandler {
                   let chunk = m["chunk"] as? Int else { return nil }
             let t = IncomingTransfer(id: id, name: name, size: size, mtime: (m["mtime"] as? NSNumber)?.int64Value ?? 0,
                                      chunk: chunk, done: Set(m["done"] as? [Int] ?? []))
+            t.folder = Self.safeFolder(m["dir"] as? String ?? "")
             transfers[id] = t
             return t
         }
@@ -201,7 +205,8 @@ final class Receiver: HTTPHandler {
     private func saveMeta(_ t: IncomingTransfer) {
         // Serialized so an older snapshot never overwrites a newer one
         lock.locked {
-            let obj: [String: Any] = ["name": t.name, "size": t.size, "mtime": t.mtime, "chunk": t.chunk, "done": t.done.sorted()]
+            let obj: [String: Any] = ["name": t.name, "size": t.size, "mtime": t.mtime, "chunk": t.chunk,
+                                      "done": t.done.sorted(), "dir": t.folder]
             if let data = try? JSONSerialization.data(withJSONObject: obj) {
                 try? data.write(to: partialDir.appendingPathComponent(t.id + ".json"), options: .atomic)
             }
@@ -219,6 +224,28 @@ final class Receiver: HTTPHandler {
             name = String(name.prefix(150)) + (ext.isEmpty ? "" : "." + ext.prefix(20))
         }
         return name
+    }
+
+    /// Cleans a phone-supplied relative folder: no "..", no absolute paths, at most four levels.
+    static func safeFolder(_ raw: String) -> String {
+        raw.replacingOccurrences(of: "\\", with: "/").split(separator: "/")
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ". ")) }
+            .filter { !$0.isEmpty }
+            .prefix(4)
+            .map { safeName($0) }
+            .joined(separator: "/")
+    }
+
+    /// Subfolders of the download folder, newest first, so the phone can offer them.
+    private func folders(_ req: HTTPRequest) -> HTTPResponse {
+        let keys: [URLResourceKey] = [.isDirectoryKey, .contentModificationDateKey]
+        let items = (try? FileManager.default.contentsOfDirectory(at: saveDir, includingPropertiesForKeys: keys,
+                                                                  options: [.skipsHiddenFiles])) ?? []
+        let dirs = items.compactMap { u -> (String, Date)? in
+            guard let v = try? u.resourceValues(forKeys: Set(keys)), v.isDirectory == true else { return nil }
+            return (u.lastPathComponent, v.contentModificationDate ?? .distantPast)
+        }.sorted { $0.1 > $1.1 }.prefix(30).map(\.0)
+        return sealed(req, ["root": saveDir.lastPathComponent, "folders": Array(dirs)])
     }
 
     private func initTransfer(_ req: HTTPRequest) -> HTTPResponse {
@@ -242,6 +269,10 @@ final class Receiver: HTTPHandler {
             saveMeta(t)
             lock.locked { transfers[id] = t }
         }
+        // The destination can change between attempts; the latest request wins
+        let folder = Self.safeFolder(b["dir"] as? String ?? "")
+        let changed = lock.locked { () -> Bool in defer { t.folder = folder }; return t.folder != folder }
+        if changed { saveMeta(t) }
         let done = lock.locked { () -> [Int] in t.updated = Date(); return t.done.sorted() }
         return sealed(req, ["id": id, "chunk": t.chunk, "done": done])
     }
@@ -277,8 +308,11 @@ final class Receiver: HTTPHandler {
         let missing = lock.locked { t.chunkCount - t.done.count }
         if missing > 0 { return .error(409, "\(missing) chunks missing") }
         let part = partialDir.appendingPathComponent(t.id + ".part")
-        let final = uniqueURL(saveDir.appendingPathComponent(t.name))
+        let folder = lock.locked { t.folder }
+        let dest = folder.isEmpty ? saveDir : saveDir.appendingPathComponent(folder, isDirectory: true)
+        let final = uniqueURL(dest.appendingPathComponent(t.name))
         do {
+            try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
             try FileManager.default.moveItem(at: part, to: final)
         } catch {
             return .error(500, "cannot save file")

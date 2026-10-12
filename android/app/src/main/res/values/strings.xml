@@ -102,4 +102,18 @@
     <string name="direct_mac_on_wifi">Your Mac is on another Wi-Fi network. Join the same network, or on the Mac turn on “Allow Direct Connection on Wi-Fi”.</string>
     <string name="direct_failed">Couldn\'t connect directly to your Mac. Retrying…</string>
     <string name="direct_hotspot_failed">Your phone couldn\'t start its temporary Wi-Fi network. If your hotspot is on, turn it off and try again.</string>
+
+    <!-- Destination folder and Mac app -->
+    <string name="dest_title">Folder on your Mac</string>
+    <string name="dest_default">Download folder (no subfolder)</string>
+    <string name="dest_dialog_title">Save to a subfolder</string>
+    <string name="dest_dialog_msg">Files you send go into this subfolder of the download folder on your Mac. It stays set until you change it.</string>
+    <string name="dest_dialog_hint">e.g. Wedding 2026</string>
+    <string name="dest_existing">Folders on your Mac</string>
+    <string name="dest_save">Save</string>
+    <string name="dest_none">No subfolder</string>
+    <string name="mac_app_msg">Open this address on your Mac, or scan the code with another device.</string>
+    <string name="share_link">Share link</string>
+    <string name="copy_link">Copy</string>
+    <string name="toast_copied">Link copied</string>
 </resources>

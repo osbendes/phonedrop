@@ -86,6 +86,48 @@
             android:textColor="@color/mute"
             android:textSize="13sp" />
 
+        <!-- Destination subfolder on the Mac -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_card"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/dest_title"
+                    android:textColor="@color/mute"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/destFolder"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="middle"
+                    android:singleLine="true"
+                    android:textColor="@color/fg"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/destBtn"
+                style="@style/Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/btn_change" />
+        </LinearLayout>
+
         <!-- Transfers -->
         <LinearLayout
             android:id="@+id/transfersHeader"
@@ -164,6 +206,14 @@
             android:text="@string/outbox_hint"
             android:textColor="@color/mute"
             android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/getMacApp"
+            style="@style/Link"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/pair_get_mac" />
 
         <!-- Battery restrictions -->
         <LinearLayout

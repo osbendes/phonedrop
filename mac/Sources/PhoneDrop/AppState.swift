@@ -18,7 +18,12 @@ struct RecentFile: Identifiable, Codable {
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
-    static let androidAppURL = URL(string: "https://github.com/osbendes/phonedrop/releases/latest")!
+    static let androidAppURL = URL(string: "https://osbendes.github.io/phonedrop/")!
+    /// Direct APK link, used for the download QR code
+    static let androidApkURL = "https://github.com/osbendes/phonedrop/releases/latest/download/PhoneDrop.apk"
+    static var defaultSaveDir: URL {
+        FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].appendingPathComponent("PhoneDrop")
+    }
 
     @Published var transfers: [TransferSnapshot] = []
     @Published var recent: [RecentFile] = []
@@ -28,6 +33,9 @@ final class AppState: ObservableObject {
     @Published var port: UInt16 = 0
     @Published var ip: String = "–"
     @Published var showPair = false
+    /// The pairing card shows the app-download QR instead of the pairing QR
+    @Published var qrShowsApp = false
+    @Published var recentDirs: [String] = UserDefaults.standard.stringArray(forKey: "recentDirs") ?? []
     @Published var dropTargeted = false
     @Published var directSSID: String?
     @Published var allowDirectOnWiFi = UserDefaults.standard.bool(forKey: "allowDirectOnWiFi") {
@@ -46,7 +54,7 @@ final class AppState: ObservableObject {
 
     init() {
         let dir = defaults.string(forKey: "saveDir").map { URL(fileURLWithPath: $0) }
-            ?? FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].appendingPathComponent("PhoneDrop")
+            ?? Self.defaultSaveDir
         saveDir = dir
         key = KeyStore.load()
         receiver = Receiver(key: key, saveDir: dir)
@@ -203,11 +211,27 @@ final class AppState: ObservableObject {
         panel.directoryURL = saveDir
         panel.prompt = L("Choose")
         NSApp.activate(ignoringOtherApps: true)
-        if panel.runModal() == .OK, let u = panel.url {
-            saveDir = u
-            defaults.set(u.path, forKey: "saveDir")
-            receiver.setSaveDir(u)
+        if panel.runModal() == .OK, let u = panel.url { setSaveDir(u) }
+    }
+
+    /// Switches where incoming files are saved and remembers the previous places.
+    func setSaveDir(_ u: URL) {
+        guard u.path != saveDir.path else { return }
+        recentDirs.removeAll { $0 == u.path || $0 == saveDir.path }
+        recentDirs.insert(saveDir.path, at: 0)
+        recentDirs = Array(recentDirs.filter { $0 != Self.defaultSaveDir.path }.prefix(5))
+        defaults.set(recentDirs, forKey: "recentDirs")
+        saveDir = u
+        defaults.set(u.path, forKey: "saveDir")
+        receiver.setSaveDir(u)
+        DispatchQueue.global(qos: .utility).async {
+            try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
         }
+    }
+
+    /// "~/Downloads/PhoneDrop" style path for display.
+    static func displayPath(_ path: String) -> String {
+        (path as NSString).abbreviatingWithTildeInPath
     }
 
     func addToOutbox() {
