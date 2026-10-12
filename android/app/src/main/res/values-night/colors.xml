@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#0F1115</color>
-    <color name="card">#181B21</color>
-    <color name="fg">#EEF0F3</color>
-    <color name="mute">#9AA1AD</color>
-    <color name="line">#2A2F38</color>
-    <color name="acc">#3B82F6</color>
-    <color name="ok">#22C55E</color>
-    <color name="warn">#F59E0B</color>
-    <color name="err">#EF4444</color>
+    <color name="bg">#1F1D18</color>
+    <color name="card">#2A2720</color>
+    <color name="fg">#F5F0E1</color>
+    <color name="mute">#9E988A</color>
+    <color name="line">#38342B</color>
+    <color name="tint">#38342B</color>
+    <color name="link">#FFD230</color>
+    <color name="ok_soft">#24402F</color>
+    <color name="on_ok">#7CCFA8</color>
+    <color name="warn">#FFD230</color>
 </resources>

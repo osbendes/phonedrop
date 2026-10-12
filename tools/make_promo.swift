@@ -56,7 +56,7 @@ final class Canvas {
 
     func fill(_ path: CGPath, _ color: NSColor, shadow: CGFloat = 0) {
         ctx.saveGState()
-        if shadow > 0 { ctx.setShadow(offset: CGSize(width: 0, height: -shadow * 0.4), blur: shadow, color: NSColor.black.withAlphaComponent(0.45).cgColor) }
+        if shadow > 0 { ctx.setShadow(offset: CGSize(width: 0, height: -shadow * 0.4), blur: shadow, color: NSColor.black.withAlphaComponent(0.28).cgColor) }
         ctx.addPath(path); ctx.setFillColor(color.cgColor); ctx.fillPath()
         ctx.restoreGState()
     }
@@ -68,9 +68,12 @@ final class Canvas {
     /// Draws wrapped text and returns its height.
     @discardableResult
     func text(_ s: String, x: CGFloat, y: CGFloat, width: CGFloat, size: CGFloat, weight: NSFont.Weight = .regular,
-              color: NSColor = .white, align: NSTextAlignment = .left, spacing: CGFloat = 0, kern: CGFloat = 0) -> CGFloat {
+              color: NSColor = ink, align: NSTextAlignment = .left, spacing: CGFloat = 0, kern: CGFloat = 0) -> CGFloat {
         let p = NSMutableParagraphStyle(); p.alignment = align; p.lineSpacing = spacing
-        let str = NSAttributedString(string: s, attributes: [.font: NSFont.systemFont(ofSize: size, weight: weight),
+        // The apps use the rounded system face; so do the pictures
+        let base = NSFont.systemFont(ofSize: size, weight: weight)
+        let font = base.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: size) } ?? base
+        let str = NSAttributedString(string: s, attributes: [.font: font,
                                                              .foregroundColor: color, .paragraphStyle: p, .kern: kern])
         let box = str.boundingRect(with: CGSize(width: width, height: 10_000), options: [.usesLineFragmentOrigin])
         NSGraphicsContext.saveGraphicsState()
@@ -88,7 +91,7 @@ final class Canvas {
         let path = rounded(r, width * 0.034)
         fill(path, .black, shadow: width * 0.09)
         ctx.saveGState(); ctx.addPath(path); ctx.clip(); image(img, in: r); ctx.restoreGState()
-        stroke(path, NSColor.white.withAlphaComponent(0.18), 1.5)
+        stroke(path, NSColor.black.withAlphaComponent(0.10), 1.5)
         return r
     }
 
@@ -140,12 +143,12 @@ final class Canvas {
     }
 }
 
-let blueTop = rgb(0x4285FF), blueBottom = rgb(0x1535A8)
+let ink = rgb(0x2B2A28), cream = rgb(0xFFFBF0)
 
 func brand(_ c: Canvas) {
-    c.background(blueTop, blueBottom)
-    c.glow(x: c.w * 0.85, y: c.h * 0.12, radius: c.w * 0.7, NSColor.white.withAlphaComponent(0.16))
-    c.glow(x: c.w * 0.05, y: c.h * 0.95, radius: c.w * 0.8, rgb(0x0A1A66, 0.55))
+    c.background(rgb(0xFFE27A), rgb(0xFFCB2E))
+    c.glow(x: c.w * 0.85, y: c.h * 0.12, radius: c.w * 0.7, NSColor.white.withAlphaComponent(0.45))
+    c.glow(x: c.w * 0.05, y: c.h * 0.95, radius: c.w * 0.8, rgb(0xFFB800, 0.5))
 }
 
 struct Texts {
@@ -189,10 +192,13 @@ for t in all {
     do {
         let c = Canvas(2000, 1180)
         brand(c)
-        let mw: CGFloat = 800, pw: CGFloat = 430
-        let mh = Canvas.macHeight("mac-receiving-\(l)-dark", width: mw)
-        c.mac("mac-receiving-\(l)-dark", x: 330, y: (c.h - mh) / 2, width: mw)
-        c.phone("phone-sending-\(l)-dark", x: 1190, y: (c.h - Canvas.phoneHeight(width: pw)) / 2, width: pw)
+        // The window as large as the canvas allows, the phone beside it; the pair is centred
+        let pw: CGFloat = 430
+        let mh = c.h - 140
+        let mw = mh * 800 / Canvas.macHeight("mac-receiving-\(l)-dark", width: 800)
+        let left = (c.w - mw - 70 - pw) / 2
+        c.mac("mac-receiving-\(l)-dark", x: left, y: 70, width: mw)
+        c.phone("phone-sending-\(l)-dark", x: left + mw + 70, y: (c.h - Canvas.phoneHeight(width: pw)) / 2, width: pw)
         c.save("\(readmeOut)/hero-\(l).png")
     }
 
@@ -203,11 +209,11 @@ for t in all {
         let w: CGFloat = 420, gap: CGFloat = 50, top: CGFloat = 70
         let tallest = items.map { Canvas.macHeight($0.0, width: w) }.max()!
         let c = Canvas(Int(gap + CGFloat(items.count) * (w + gap)), Int(top + tallest + 110))
-        c.background(rgb(0xEEF2FA), rgb(0xD9E2F3))
+        c.background(cream, rgb(0xFFF4C7))
         for (i, item) in items.enumerated() {
             let x = gap + CGFloat(i) * (w + gap)
             c.mac(item.0, x: x, y: top, width: w)
-            c.text(t.captions[item.1]!, x: x, y: top + tallest + 34, width: w, size: 26, weight: .medium, color: rgb(0x1F2937), align: .center)
+            c.text(t.captions[item.1]!, x: x, y: top + tallest + 34, width: w, size: 26, weight: .medium, color: ink, align: .center)
         }
         c.save("\(readmeOut)/mac-\(l).png")
     }
@@ -220,11 +226,11 @@ for t in all {
         let w: CGFloat = 340, gap: CGFloat = 50, top: CGFloat = 70
         let ph = Canvas.phoneHeight(width: w)
         let c = Canvas(Int(gap + CGFloat(items.count) * (w + gap)), Int(top + ph + 110))
-        c.background(rgb(0xEEF2FA), rgb(0xD9E2F3))
+        c.background(cream, rgb(0xFFF4C7))
         for (i, item) in items.enumerated() {
             let x = gap + CGFloat(i) * (w + gap)
             c.phone(item.0, x: x, y: top, width: w)
-            c.text(t.captions[item.1]!, x: x, y: top + ph + 34, width: w, size: 26, weight: .medium, color: rgb(0x1F2937), align: .center)
+            c.text(t.captions[item.1]!, x: x, y: top + ph + 34, width: w, size: 26, weight: .medium, color: ink, align: .center)
         }
         c.save("\(readmeOut)/android-\(l).png")
     }
@@ -233,10 +239,10 @@ for t in all {
     for (i, s) in t.stories.enumerated() {
         let c = Canvas(1080, 1920)
         brand(c)
-        c.text("PHONEDROP", x: 90, y: 270, width: 900, size: 30, weight: .bold, color: NSColor.white.withAlphaComponent(0.75), kern: 6)
+        c.text("PHONEDROP", x: 90, y: 270, width: 900, size: 30, weight: .bold, color: ink.withAlphaComponent(0.6), kern: 6)
         var y: CGFloat = 325
         y += c.text(s.title, x: 90, y: y, width: 900, size: 92, weight: .heavy, spacing: -6) + 28
-        y += c.text(s.body, x: 90, y: y, width: 880, size: 38, weight: .medium, color: NSColor.white.withAlphaComponent(0.92), spacing: 6) + 60
+        y += c.text(s.body, x: 90, y: y, width: 880, size: 38, weight: .medium, color: ink.withAlphaComponent(0.85), spacing: 6) + 60
         // Devices sit between the text and the footer
         let bottom: CGFloat = 1545
         let k = Canvas.phoneHeight(width: 1)
@@ -269,8 +275,8 @@ for t in all {
             c.phone("phone-sending-\(l)-dark", x: 540 + 25, y: bottom - k * pw, width: pw)
         }
         let pill = CGRect(x: 240, y: 1590, width: 600, height: 76)
-        c.fill(c.rounded(pill, 38), rgb(0x0B1D6B, 0.92), shadow: 30)
-        c.text(t.footer, x: pill.minX, y: pill.minY + 17, width: pill.width, size: 32, weight: .semibold, align: .center)
+        c.fill(c.rounded(pill, 38), ink, shadow: 30)
+        c.text(t.footer, x: pill.minX, y: pill.minY + 17, width: pill.width, size: 32, weight: .semibold, color: cream, align: .center)
         c.save("\(storiesOut)/story-\(l)-\(i + 1).png")
     }
 }

@@ -37,29 +37,30 @@ fi
 
 if [[ $WHAT == *phone* ]]; then
   APP=com.osbendes.phonedrop/com.phonedrop.app.MainActivity
+  PAUSE=${PAUSE:-2}  # seconds to let the screen restart; a slow emulator needs more
   diag() { adb shell am start -n $APP -a com.osbendes.phonedrop.DIAG_"$@" >/dev/null 2>&1; }
   for lang in tr en; do
     for theme in dark light; do
       other=$([ $theme = dark ] && echo light || echo dark)
       shot() {  # name, DEMO extras…
         local name=$1; shift
-        diag DEMO "$@"; sleep 1.5
+        diag DEMO "$@"; sleep $PAUSE
         adb exec-out screencap -p > "$OUT/phone-$name-$lang-$theme.png"
       }
-      diag LOOK --es lang $lang --es theme $theme; sleep 2
+      diag LOOK --es lang $lang --es theme $theme; sleep $PAUSE
       shot unpaired --es scene unpaired
       shot ready --es scene ready
       shot sending --es scene sending
-      shot receiving --es scene receiving
+      shot receiving --es scene receiving --ez bottom true
       shot settings --es scene ready --es dialog settings
       # Restarting the screen is the only way to close a dialog from here
-      diag LOOK --es lang $lang --es theme $other; sleep 2
-      diag LOOK --es lang $lang --es theme $theme; sleep 2
+      diag LOOK --es lang $lang --es theme $other; sleep $PAUSE
+      diag LOOK --es lang $lang --es theme $theme; sleep $PAUSE
       shot pairdialog --es scene unpaired --es dialog pair
-      diag LOOK --es lang $lang --es theme $other; sleep 2
+      diag LOOK --es lang $lang --es theme $other; sleep $PAUSE
     done
   done
-  diag LOOK --es lang "" --es theme ""; sleep 2
+  diag LOOK --es lang "" --es theme ""; sleep $PAUSE
   diag DEMO --es scene off
 fi
 echo "Screenshots are in $OUT"

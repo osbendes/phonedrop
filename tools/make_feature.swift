@@ -9,15 +9,16 @@ let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: W, pixelsHigh: H, 
 NSGraphicsContext.saveGraphicsState()
 NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
 let full = NSRect(x: 0, y: 0, width: W, height: H)
-NSGradient(starting: NSColor(red: 0.26, green: 0.52, blue: 1.0, alpha: 1),
-           ending: NSColor(red: 0.11, green: 0.30, blue: 0.85, alpha: 1))!.draw(in: full, angle: -30)
+NSGradient(starting: NSColor(srgbRed: 1.0, green: 0.86, blue: 0.33, alpha: 1),
+           ending: NSColor(srgbRed: 1.0, green: 0.78, blue: 0.10, alpha: 1))!.draw(in: full, angle: -30)
 
 // Glyph (same drawing as the app icon, scaled into a 420px box on the left)
 let s: CGFloat = 420.0 / 1024.0
 let ox: CGFloat = 20, oy: CGFloat = 40
 func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSRect { NSRect(x: ox + x * s, y: oy + y * s, width: w * s, height: h * s) }
 func p(_ x: CGFloat, _ y: CGFloat) -> NSPoint { NSPoint(x: ox + x * s, y: oy + y * s) }
-NSColor.white.setFill(); NSColor.white.setStroke()
+let ink = NSColor(srgbRed: 0.17, green: 0.165, blue: 0.157, alpha: 1)
+ink.setFill(); ink.setStroke()
 let phone = NSBezierPath(roundedRect: r(250, 330, 190, 360), xRadius: 34 * s, yRadius: 34 * s); phone.lineWidth = 26 * s; phone.stroke()
 NSBezierPath(roundedRect: r(315, 362, 60, 14), xRadius: 7 * s, yRadius: 7 * s).fill()
 let screen = NSBezierPath(roundedRect: r(560, 420, 250, 175), xRadius: 18 * s, yRadius: 18 * s); screen.lineWidth = 26 * s; screen.stroke()
@@ -29,9 +30,9 @@ let head = NSBezierPath(); head.move(to: p(630, 680)); head.line(to: p(740, 680)
 // Text
 let para = NSMutableParagraphStyle(); para.lineSpacing = 4
 (title as NSString).draw(at: NSPoint(x: 470, y: 250), withAttributes: [
-    .font: NSFont.systemFont(ofSize: 76, weight: .bold), .foregroundColor: NSColor.white])
+    .font: NSFont.systemFont(ofSize: 76, weight: .bold), .foregroundColor: ink])
 (tagline as NSString).draw(in: NSRect(x: 474, y: 110, width: 520, height: 130), withAttributes: [
-    .font: NSFont.systemFont(ofSize: 30, weight: .medium), .foregroundColor: NSColor.white.withAlphaComponent(0.92),
+    .font: NSFont.systemFont(ofSize: 30, weight: .medium), .foregroundColor: ink.withAlphaComponent(0.85),
     .paragraphStyle: para])
 NSGraphicsContext.restoreGraphicsState()
 try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: out))

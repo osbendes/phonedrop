@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.PhoneDrop" parent="android:Theme.Material.NoActionBar">
-        <item name="android:colorAccent">@color/acc</item>
+        <item name="android:colorAccent">@color/link</item>
         <item name="android:colorPrimary">@color/acc</item>
+        <item name="android:alertDialogTheme">@style/Dialog</item>
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+
+    <style name="Dialog" parent="android:Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:colorAccent">@color/link</item>
     </style>
 </resources>

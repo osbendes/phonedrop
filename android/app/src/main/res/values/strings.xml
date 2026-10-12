@@ -6,7 +6,7 @@
     <!-- Main screen -->
     <string name="mac_not_paired">No Mac paired yet</string>
     <string name="mac_not_paired_hint">Install PhoneDrop on your Mac, then scan its code.</string>
-    <string name="mac_connected">● Connected</string>
+    <string name="mac_connected">Connected</string>
     <string name="mac_offline">Not found · Is PhoneDrop running on your Mac?</string>
     <string name="mac_searching">Looking for your Mac…</string>
     <string name="btn_pair">Pair with Mac</string>
@@ -125,4 +125,6 @@
     <string name="opt_system">System</string>
     <string name="opt_light">Light</string>
     <string name="opt_dark">Dark</string>
+    <string name="hero_title">Choose files to send</string>
+    <string name="hero_text">Photos, videos or any other file, at any size.</string>
 </resources>

@@ -7,8 +7,8 @@
 <meta name="description" content="AirDrop-style file transfer from Android to Mac over Wi-Fi. Fast, private, free.">
 <link rel="icon" href="icon.png">
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --fg:#14161a; --mute:#5b6270; --line:#e5e7eb; --acc:#2563eb; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b21; --fg:#eef0f3; --mute:#9aa1ad; --line:#2a2f38; --acc:#60a5fa; } }
+  :root { --bg:#fffbf0; --card:#fff; --fg:#2b2a28; --mute:#6f6a60; --line:#efeae0; --acc:#ffd230; --link:#735c00; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1f1d18; --card:#2a2720; --fg:#f5f0e1; --mute:#9e988a; --line:#38342b; --acc:#ffd230; --link:#ffd230; } }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 -apple-system,system-ui,Roboto,sans-serif; }
   main { max-width:760px; margin:0 auto; padding:48px 16px 64px; }
@@ -18,13 +18,13 @@
   .lead { color:var(--mute); font-size:18px; margin:6px 0 0; }
   .downloads { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:24px 0 8px; }
   @media (max-width:560px) { .downloads { grid-template-columns:1fr; } header { flex-direction:column; align-items:flex-start; } }
-  a.dl { display:block; padding:16px 18px; border-radius:14px; background:var(--acc); color:#fff; text-decoration:none; font-weight:600; }
+  a.dl { display:block; padding:16px 26px; border-radius:999px; background:var(--acc); color:#2b2a28; text-decoration:none; font-weight:600; }
   a.dl small { display:block; font-weight:400; opacity:.85; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-top:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:20px; margin-top:16px; }
   h2 { font-size:20px; margin:0 0 8px; }
   ol, ul { padding-left:22px; margin:8px 0; }
   .mute { color:var(--mute); font-size:14px; }
-  a { color:var(--acc); }
+  a { color:var(--link); }
 </style>
 </head>
 <body>

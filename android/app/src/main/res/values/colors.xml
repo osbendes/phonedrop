@@ -1,12 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- "Warm Modern Utility" design system: sunshine yellow on warm paper tones -->
 <resources>
-    <color name="bg">#F5F6F8</color>
+    <color name="bg">#FFFBF0</color>
     <color name="card">#FFFFFF</color>
-    <color name="fg">#14161A</color>
-    <color name="mute">#6B7280</color>
-    <color name="line">#E5E7EB</color>
-    <color name="acc">#2563EB</color>
-    <color name="ok">#16A34A</color>
-    <color name="warn">#D97706</color>
-    <color name="err">#DC2626</color>
+    <color name="fg">#2B2A28</color>
+    <color name="mute">#8A857A</color>
+    <color name="line">#EFEAE0</color>
+    <!-- Brand yellow: fills only (buttons, progress); text on it is on_acc -->
+    <color name="acc">#FFD230</color>
+    <color name="on_acc">#2B2A28</color>
+    <!-- Soft yellow surface: secondary buttons, icon plates, progress track -->
+    <color name="tint">#FFF4C7</color>
+    <!-- Yellow is unreadable as text on paper, so links use its dark shade -->
+    <color name="link">#735C00</color>
+    <color name="ok">#7CCFA8</color>
+    <color name="ok_soft">#CDEFE0</color>
+    <color name="on_ok">#1F6B4A</color>
+    <color name="warn">#9A6B00</color>
+    <color name="err">#F2877B</color>
+    <!-- File type plates -->
+    <color name="type_doc">#CDEFE0</color>
+    <color name="type_image">#CFE6F7</color>
+    <color name="type_audio">#FFD9C7</color>
+    <color name="type_archive">#E1DAF7</color>
+    <color name="type_video">#F9D5DF</color>
 </resources>

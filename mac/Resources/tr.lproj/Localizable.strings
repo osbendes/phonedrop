@@ -17,7 +17,6 @@
 "Pair your phone" = "Telefonunu eşleştir";
 "Phone and Mac must be on the same Wi-Fi network. Anyone who scans this code can send files to this Mac." = "Telefon ve Mac aynı Wi-Fi ağında olmalı. Bu kodu okutan herkes bu Mac'e dosya gönderebilir.";
 "Quit PhoneDrop" = "PhoneDrop'tan Çık";
-"Ready · %@" = "Hazır · %@";
 "Received" = "Alınanlar";
 "Reset Pairing…" = "Eşleştirmeyi Sıfırla…";
 "Reset pairing?" = "Eşleştirme sıfırlansın mı?";
@@ -43,10 +42,10 @@
 "Pair a Phone" = "Telefon Eşleştir";
 "Done" = "Bitti";
 "Send" = "Gönder";
-"Waiting for Phone…" = "Telefon Bekleniyor…";
 "Your phone downloads these by itself if Bluetooth is on. If nothing happens, open PhoneDrop on the phone." = "Telefonda Bluetooth açıksa dosyalar kendiliğinden iner. Bir şey olmazsa telefonda PhoneDrop'u aç.";
 "Language" = "Dil";
 "Appearance" = "Görünüm";
 "System" = "Sistem";
 "Light" = "Açık";
 "Dark" = "Koyu";
+"Ready" = "Hazır";

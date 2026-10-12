@@ -15,11 +15,12 @@ let s = size / 1024
 let inset: CGFloat = fullBleed ? 0 : 100 * s
 let rect = NSRect(x: inset, y: inset, width: size - 2 * inset, height: size - 2 * inset)
 let bg = NSBezierPath(roundedRect: rect, xRadius: fullBleed ? 0 : 185 * s, yRadius: fullBleed ? 0 : 185 * s)
-NSGradient(starting: NSColor(red: 0.26, green: 0.52, blue: 1.0, alpha: 1),
-           ending: NSColor(red: 0.11, green: 0.30, blue: 0.85, alpha: 1))!.draw(in: bg, angle: -90)
+NSGradient(starting: NSColor(srgbRed: 1.0, green: 0.86, blue: 0.33, alpha: 1),
+           ending: NSColor(srgbRed: 1.0, green: 0.78, blue: 0.10, alpha: 1))!.draw(in: bg, angle: -90)
 
-NSColor.white.setFill()
-NSColor.white.setStroke()
+let ink = NSColor(srgbRed: 0.17, green: 0.165, blue: 0.157, alpha: 1)
+ink.setFill()
+ink.setStroke()
 // Phone (left)
 let phone = NSBezierPath(roundedRect: NSRect(x: 250 * s, y: 330 * s, width: 190 * s, height: 360 * s), xRadius: 34 * s, yRadius: 34 * s)
 phone.lineWidth = 26 * s

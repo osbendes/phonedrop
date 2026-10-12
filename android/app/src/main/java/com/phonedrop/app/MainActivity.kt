@@ -63,7 +63,7 @@ class MainActivity : Activity() {
     internal var demo: Boolean? = null
     private val paired get() = demo ?: link.prefs.paired
 
-    private class Row(val root: View, val name: TextView, val bar: ProgressBar, val status: TextView, val speed: TextView)
+    private class Row(val root: View, val name: TextView, val bar: ProgressBar, val status: TextView, val speed: TextView, val plate: TextView)
 
     private val tick = object : Runnable {
         override fun run() {
@@ -100,8 +100,11 @@ class MainActivity : Activity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
-        intent?.data?.let { pairWith(it.toString()) }
-        Diagnostics.run(this, intent, link.prefs)
+        // Not after a restart of the screen (rotation, new theme): the code was handled the first time
+        if (savedInstanceState == null) {
+            intent?.data?.let { pairWith(it.toString()) }
+            Diagnostics.run(this, intent, link.prefs)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -298,7 +301,7 @@ class MainActivity : Activity() {
                     setPadding(0, (8 * d).toInt(), 0, (4 * d).toInt())
                 })
                 for (n in names.take(12)) existing.addView(TextView(this).apply {
-                    text = n; textSize = 16f; setTextColor(getColor(R.color.acc))
+                    text = n; textSize = 16f; setTextColor(getColor(R.color.link))
                     setPadding(0, (10 * d).toInt(), 0, (10 * d).toInt())
                     setOnClickListener { input.setText(n); input.setSelection(n.length) }
                 })
@@ -368,6 +371,8 @@ class MainActivity : Activity() {
         val status = findViewById<TextView>(R.id.macStatus)
         val btn = findViewById<Button>(R.id.pairBtn)
         if (demo != null) macOnline = true
+        // Unpaired, the card needs the room for its two lines of text
+        findViewById<View>(R.id.macIcon).visibility = if (paired) View.VISIBLE else View.GONE
         findViewById<View>(R.id.pickGallery).isEnabled = paired
         findViewById<View>(R.id.pickFiles).isEnabled = paired
         findViewById<View>(R.id.pickGallery).alpha = if (paired) 1f else 0.5f
@@ -376,6 +381,8 @@ class MainActivity : Activity() {
             name.setText(R.string.mac_not_paired)
             status.setText(R.string.mac_not_paired_hint)
             status.setTextColor(getColor(R.color.mute))
+            status.background = null
+            status.setPadding(0, 0, 0, 0)
             btn.setText(R.string.btn_pair)
             return
         }
@@ -386,7 +393,16 @@ class MainActivity : Activity() {
             false -> offlineReason
             null -> R.string.mac_searching
         })
-        status.setTextColor(getColor(when (macOnline) { true -> R.color.ok; false -> R.color.warn; null -> R.color.mute }))
+        status.setTextColor(getColor(when (macOnline) { true -> R.color.on_ok; false -> R.color.warn; null -> R.color.mute }))
+        // "Connected" sits in a mint pill; the other states are plain text
+        val d = resources.displayMetrics.density
+        if (macOnline == true) {
+            status.setBackgroundResource(R.drawable.bg_chip)
+            status.setPadding((10 * d).toInt(), (2 * d).toInt(), (10 * d).toInt(), (2 * d).toInt())
+        } else {
+            status.background = null
+            status.setPadding(0, 0, 0, 0)
+        }
     }
 
     /**
@@ -401,6 +417,7 @@ class MainActivity : Activity() {
             val result = runCatching { link.client().outbox() }
             if (result.isFailure) offlineReason = link.diagnose()
             runOnUiThread {
+                if (demo != null) return@runOnUiThread
                 macOnline = result.isSuccess
                 renderMac()
                 renderOutbox(result.isSuccess, result.getOrNull())
@@ -472,6 +489,7 @@ class MainActivity : Activity() {
         for (it in items) {
             val row = rows.getOrPut(it.key) { newRow().also { r -> box.addView(r.root, 0) } }
             row.name.text = (if (it.direction == Transfers.Direction.UP) "↑ " else "↓ ") + it.name
+            setType(row.plate, it.name)
             val pct = if (it.size > 0) (it.sent.get() * 1000 / it.size).toInt() else 0
             row.bar.progress = if (it.state == Transfers.State.DONE) 1000 else pct
             row.bar.progressTintList = getColorStateList(when (it.state) {
@@ -499,10 +517,16 @@ class MainActivity : Activity() {
     private fun newRow(): Row {
         val d = resources.displayMetrics.density
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
             setBackgroundResource(R.drawable.bg_card)
             setPadding((14 * d).toInt(), (12 * d).toInt(), (14 * d).toInt(), (12 * d).toInt())
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = (8 * d).toInt() }
+        }
+        val plate = typePlate()
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
         }
         val name = TextView(this).apply {
             setTextColor(getColor(R.color.fg)); textSize = 15f; setSingleLine(); ellipsize = TextUtils.TruncateAt.MIDDLE
@@ -510,6 +534,7 @@ class MainActivity : Activity() {
         }
         val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 1000
+            progressDrawable = getDrawable(R.drawable.progress)
             layoutParams = LinearLayout.LayoutParams(-1, (6 * d).toInt()).apply { topMargin = (8 * d).toInt(); bottomMargin = (6 * d).toInt() }
         }
         val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -519,8 +544,36 @@ class MainActivity : Activity() {
         }
         val speed = TextView(this).apply { setTextColor(getColor(R.color.mute)); textSize = 13f }
         line.addView(status); line.addView(speed)
-        root.addView(name); root.addView(bar); root.addView(line)
-        return Row(root, name, bar, status, speed)
+        column.addView(name); column.addView(bar); column.addView(line)
+        root.addView(plate); root.addView(column)
+        return Row(root, name, bar, status, speed, plate)
+    }
+
+    /**
+     * The small pastel square that shows a file's type (its extension, coloured by kind).
+     *
+     * TR: Dosyanın türünü gösteren küçük pastel kare (uzantısı, türüne göre renklenir).
+     */
+    private fun typePlate(): TextView {
+        val d = resources.displayMetrics.density
+        return TextView(this).apply {
+            gravity = android.view.Gravity.CENTER
+            textSize = 11f; paint.isFakeBoldText = true; setTextColor(0xFF2B2A28.toInt())
+            setBackgroundResource(R.drawable.bg_plate)
+            layoutParams = LinearLayout.LayoutParams((40 * d).toInt(), (40 * d).toInt()).apply { marginEnd = (12 * d).toInt() }
+        }
+    }
+
+    private fun setType(plate: TextView, fileName: String) {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        plate.text = ext.take(4).uppercase()
+        plate.backgroundTintList = getColorStateList(when (ext) {
+            "jpg", "jpeg", "png", "heic", "heif", "gif", "webp", "dng", "raw", "bmp", "svg" -> R.color.type_image
+            "mp4", "mov", "mkv", "avi", "webm", "3gp", "m4v" -> R.color.type_video
+            "mp3", "wav", "m4a", "flac", "ogg", "aac", "opus" -> R.color.type_audio
+            "zip", "rar", "7z", "tar", "gz", "apk", "dmg", "iso" -> R.color.type_archive
+            else -> R.color.type_doc
+        })
     }
 
     // ---------------- from the Mac ----------------
@@ -538,8 +591,9 @@ class MainActivity : Activity() {
             box.addView(Button(this).apply {
                 setText(getString(R.string.outbox_download_all, files.length()))
                 setBackgroundResource(R.drawable.bg_btn_primary)
-                setTextColor(0xFFFFFFFF.toInt())
+                setTextColor(getColor(R.color.on_acc))
                 isAllCaps = false
+                stateListAnimator = null
                 layoutParams = LinearLayout.LayoutParams(-1, (52 * d).toInt()).apply { bottomMargin = (8 * d).toInt() }
                 setOnClickListener {
                     for (k in 0 until files.length()) {
@@ -557,20 +611,22 @@ class MainActivity : Activity() {
             val size = f.getLong("size")
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
                 setBackgroundResource(R.drawable.bg_card)
-                setPadding((14 * d).toInt(), (14 * d).toInt(), (14 * d).toInt(), (14 * d).toInt())
+                setPadding((14 * d).toInt(), (12 * d).toInt(), (14 * d).toInt(), (12 * d).toInt())
                 layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = (8 * d).toInt() }
                 setOnClickListener {
                     TransferService.download(this@MainActivity, id, name, size)
                     Toast.makeText(this@MainActivity, getString(R.string.toast_downloading, name), Toast.LENGTH_SHORT).show()
                 }
             }
+            row.addView(typePlate().also { setType(it, name) })
             row.addView(TextView(this).apply {
                 text = name; setTextColor(getColor(R.color.fg)); textSize = 15f; setSingleLine()
                 ellipsize = TextUtils.TruncateAt.MIDDLE
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
             })
-            row.addView(TextView(this).apply { text = "${Fmt.bytes(this@MainActivity, size)}  ↓"; setTextColor(getColor(R.color.acc)); textSize = 14f })
+            row.addView(TextView(this).apply { text = "${Fmt.bytes(this@MainActivity, size)}  ↓"; setTextColor(getColor(R.color.link)); textSize = 14f; paint.isFakeBoldText = true })
             box.addView(row)
         }
     }

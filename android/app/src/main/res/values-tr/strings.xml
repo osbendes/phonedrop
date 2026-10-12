@@ -4,7 +4,7 @@
 
     <string name="mac_not_paired">Henüz Mac eşleşmedi</string>
     <string name="mac_not_paired_hint">Mac\'ine PhoneDrop\'u kur, sonra kodunu okut.</string>
-    <string name="mac_connected">● Bağlı</string>
+    <string name="mac_connected">Bağlı</string>
     <string name="mac_offline">Bulunamadı · PhoneDrop Mac\'te açık mı?</string>
     <string name="mac_searching">Mac aranıyor…</string>
     <string name="btn_pair">Mac ile eşleştir</string>
@@ -115,4 +115,6 @@
     <string name="opt_system">Sistem</string>
     <string name="opt_light">Açık</string>
     <string name="opt_dark">Koyu</string>
+    <string name="hero_title">Gönderilecek dosyaları seç</string>
+    <string name="hero_text">Fotoğraf, video ya da başka her tür dosya; boyut sınırı yok.</string>
 </resources>

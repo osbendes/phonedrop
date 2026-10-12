@@ -67,6 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let w = NSWindow(contentViewController: host)
             w.title = "PhoneDrop"
             w.styleMask = [.titled, .closable, .miniaturizable]
+            w.titlebarAppearsTransparent = true
+            w.backgroundColor = Theme.bgNS
             w.isReleasedWhenClosed = false
             w.center()
             window = w
@@ -108,7 +110,7 @@ struct MenuContent: View {
             header
             if let ssid = state.directSSID {
                 HStack(spacing: 8) {
-                    Image(systemName: "antenna.radiowaves.left.and.right").foregroundStyle(.blue)
+                    Image(systemName: "antenna.radiowaves.left.and.right").foregroundStyle(Theme.link)
                     Text(verbatim: String(format: L("Connected directly to your phone (%@)"), ssid)).font(.callout)
                 }
             }
@@ -120,33 +122,40 @@ struct MenuContent: View {
             }
             if !state.transfers.isEmpty {
                 section(L("Transferring")) {
-                    ForEach(state.transfers) { TransferRow(t: $0) }
+                    VStack(spacing: 12) { ForEach(state.transfers) { TransferRow(t: $0) } }.card()
                 }
             }
-            section(L("Save to")) { SaveLocationRow() }
+            section(L("Save to")) { SaveLocationRow().card(padding: 10) }
             section(L("Received"), action: state.recent.isEmpty ? nil : (L("Clear"), { state.clearRecent() })) {
                 if state.recent.isEmpty {
-                    Text(verbatim: L("Files from your phone appear here.")).foregroundStyle(.secondary).font(.callout)
+                    Text(verbatim: L("Files from your phone appear here.")).foregroundStyle(Theme.mute).font(.callout)
                 } else {
-                    ForEach(state.recent.prefix(5)) { f in
-                        Button { state.reveal(f.path) } label: {
-                            HStack {
-                                Image(nsImage: NSWorkspace.shared.icon(for: UTType(filenameExtension: (f.name as NSString).pathExtension) ?? .data)).resizable().frame(width: 18, height: 18)
-                                Text(verbatim: f.name).lineLimit(1).truncationMode(.middle)
-                                Spacer()
-                                Text(verbatim: Fmt.bytes(f.size)).foregroundStyle(.secondary).font(.caption).monospacedDigit()
+                    VStack(spacing: 8) {
+                        ForEach(state.recent.prefix(5)) { f in
+                            Button { state.reveal(f.path) } label: {
+                                HStack(spacing: 10) {
+                                    TypePlate(name: f.name)
+                                    Text(verbatim: f.name).lineLimit(1).truncationMode(.middle)
+                                    Spacer()
+                                    Text(verbatim: Fmt.bytes(f.size)).foregroundStyle(Theme.mute).font(.caption).monospacedDigit()
+                                }
+                                .contentShape(Rectangle())
                             }
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .help(L("Show in Finder"))
                         }
-                        .buttonStyle(.plain)
-                        .help(L("Show in Finder"))
                     }
+                    .card()
                 }
             }
             OutboxView()
         }
         .padding(16)
         .frame(width: 360)
+        .foregroundStyle(Theme.fg)
+        .fontDesign(.rounded)
+        .tint(Theme.acc)
+        .background(Theme.bg)
     }
 
     private var header: some View {
@@ -182,17 +191,23 @@ struct MenuContent: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
+            .tint(Theme.mute)
         }
     }
 
     private var connectedRow: some View {
-        HStack(spacing: 8) {
-            Circle().fill(.green).frame(width: 8, height: 8)
-            Text(verbatim: String(format: L("Ready · %@"), state.devices.first ?? ""))
-                .font(.callout).lineLimit(1)
+        HStack(spacing: 10) {
+            Image(systemName: "iphone").font(.system(size: 16))
+                .frame(width: 34, height: 34).background(Theme.tint, in: RoundedRectangle(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: state.devices.first ?? "").font(.callout.weight(.semibold)).lineLimit(1)
+                Text(verbatim: L("Ready")).font(.caption2.weight(.semibold)).foregroundStyle(Theme.onOk)
+                    .padding(.horizontal, 7).padding(.vertical, 1).background(Theme.okSoft, in: Capsule())
+            }
             Spacer()
-            Button(L("Pair Another")) { PairWindow.show(appQR: false) }.controlSize(.small)
+            Button(L("Pair Another")) { PairWindow.show(appQR: false) }.buttonStyle(PillButton())
         }
+        .card(padding: 10)
     }
 
     private func confirmReset() {
@@ -213,10 +228,11 @@ struct MenuContent: View {
                                         @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(verbatim: title.uppercased()).font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+                Text(verbatim: title.uppercased()).font(.caption).fontWeight(.semibold).foregroundStyle(Theme.mute)
                 Spacer()
                 if let action {
-                    Button(action.0, action: action.1).buttonStyle(.link).font(.caption)
+                    Button(action.0, action: action.1).buttonStyle(.plain).font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.link)
                 }
             }
             content()
@@ -231,7 +247,7 @@ struct SaveLocationRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "folder.fill").foregroundStyle(.blue)
+            Image(systemName: "folder.fill").foregroundStyle(Theme.acc)
             Button { state.openSaveDir() } label: {
                 Text(verbatim: AppState.displayPath(state.saveDir.path)).lineLimit(1).truncationMode(.head)
             }
@@ -274,6 +290,8 @@ enum PairWindow {
             let w = NSPanel(contentViewController: host)
             w.title = L("Pair a Phone")
             w.styleMask = [.titled, .closable]
+            w.titlebarAppearsTransparent = true
+            w.backgroundColor = Theme.bgNS
             w.isReleasedWhenClosed = false
             w.center()
             window = w
@@ -290,10 +308,14 @@ struct PairSheet: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 12) {
             PairView()
-            Button(L("Done")) { PairWindow.close() }.keyboardShortcut(.defaultAction)
+            Button(L("Done")) { PairWindow.close() }.keyboardShortcut(.defaultAction).buttonStyle(PillButton(primary: true))
         }
         .padding(16)
         .frame(width: 380)
+        .foregroundStyle(Theme.fg)
+        .fontDesign(.rounded)
+        .tint(Theme.acc)
+        .background(Theme.bg)
     }
 }
 
@@ -324,6 +346,7 @@ struct PairView: View {
                         Text(verbatim: L("Scan this code with your phone's camera to download PhoneDrop, then install it."))
                             .font(.callout).fixedSize(horizontal: false, vertical: true)
                         Link(L("Open the download page"), destination: AppState.androidAppURL).font(.callout)
+                            .foregroundStyle(Theme.link)
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
@@ -336,11 +359,11 @@ struct PairView: View {
             }
             if !state.qrShowsApp {
                 Text(verbatim: L("Phone and Mac must be on the same Wi-Fi network. Anyone who scans this code can send files to this Mac."))
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(.caption).foregroundStyle(Theme.mute).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(12)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+        .background(Theme.tint, in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func qr(_ img: NSImage) -> some View {
@@ -350,7 +373,8 @@ struct PairView: View {
 
     private func step(_ n: Int, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 6) {
-            Text(verbatim: "\(n).").foregroundStyle(.secondary).monospacedDigit()
+            Text(verbatim: "\(n)").font(.caption2.weight(.bold)).foregroundStyle(Theme.onAcc)
+                .frame(width: 16, height: 16).background(Theme.acc, in: Circle())
             Text(verbatim: text).fixedSize(horizontal: false, vertical: true)
         }
         .font(.callout)
@@ -364,15 +388,26 @@ struct TransferRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Image(systemName: t.direction == .incoming ? "arrow.down" : "arrow.up").foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                TypePlate(name: t.name)
+                Image(systemName: t.direction == .incoming ? "arrow.down" : "arrow.up").foregroundStyle(Theme.mute)
+                    .font(.caption.weight(.bold))
                 Text(verbatim: t.name).lineLimit(1).truncationMode(.middle)
                 Spacer()
-                Text(verbatim: speedText).font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
-            ProgressView(value: Double(t.received), total: Double(max(t.size, 1)))
-            Text(verbatim: "\(Fmt.bytes(t.received)) / \(Fmt.bytes(t.size))")
-                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            // 6 pt pill bar in the brand yellow
+            GeometryReader { g in
+                Capsule().fill(Theme.tint)
+                Capsule().fill(Theme.acc)
+                    .frame(width: max(6, g.size.width * Double(t.received) / Double(max(t.size, 1))))
+            }
+            .frame(height: 6)
+            HStack {
+                Text(verbatim: "\(Fmt.bytes(t.received)) / \(Fmt.bytes(t.size))")
+                Spacer()
+                Text(verbatim: speedText)
+            }
+            .font(.caption).foregroundStyle(Theme.mute).monospacedDigit()
         }
     }
 
@@ -390,28 +425,36 @@ struct OutboxView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(verbatim: L("Send to Phone").uppercased()).font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: L("Send to Phone").uppercased()).font(.caption).fontWeight(.semibold).foregroundStyle(Theme.mute)
+            VStack(alignment: .leading, spacing: 8) {
                 if state.outbox.isEmpty {
-                    Text(verbatim: L("Drop files here. They appear in the app on your phone and leave this list once downloaded."))
-                        .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 44)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.up").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.onAcc)
+                            .frame(width: 36, height: 36).background(Theme.acc, in: Circle())
+                        Text(verbatim: L("Drop files here. They appear in the app on your phone and leave this list once downloaded."))
+                            .font(.callout).foregroundStyle(Theme.mute).multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity)
                 } else {
                     ForEach(state.outbox) { f in
-                        HStack {
+                        HStack(spacing: 10) {
+                            TypePlate(name: f.name)
                             Text(verbatim: f.name).lineLimit(1).truncationMode(.middle)
                             Spacer()
                             Button { state.removeFromOutbox(f) } label: { Image(systemName: "xmark.circle.fill") }
-                                .buttonStyle(.plain).foregroundStyle(.secondary)
+                                .buttonStyle(.plain).foregroundStyle(Theme.mute)
                         }
                     }
                 }
             }
-            .padding(10)
+            .padding(14)
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                .foregroundStyle(state.dropTargeted ? Color.accentColor : Color.secondary.opacity(0.5)))
+            .background(LinearGradient(colors: [Theme.bg, Theme.tint], startPoint: .top, endPoint: .bottom)
+                .opacity(state.dropTargeted ? 1 : 0.6), in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(style: StrokeStyle(lineWidth: state.dropTargeted ? 2 : 1.5, dash: [5]))
+                .foregroundStyle(Theme.acc))
             .onDrop(of: [.fileURL], isTargeted: $state.dropTargeted) { providers in
                 for p in providers {
                     _ = p.loadObject(ofClass: URL.self) { url, _ in
@@ -421,19 +464,18 @@ struct OutboxView: View {
                 return true
             }
             HStack {
-                Button(L("Add Files…")) { state.addToOutbox() }
+                Button(L("Add Files…")) { state.addToOutbox() }.buttonStyle(PillButton())
                 if !state.outbox.isEmpty {
-                    Button(L("Clear All")) { state.clearOutbox() }
+                    Button(L("Clear All")) { state.clearOutbox() }.buttonStyle(PillButton())
                 }
                 Spacer()
-                Button(state.sending ? L("Waiting for Phone…") : L("Send")) { state.sendOutbox() }
-                    .buttonStyle(.borderedProminent)
+                Button(state.sending ? L("Waiting…") : L("Send")) { state.sendOutbox() }
+                    .buttonStyle(PillButton(primary: true))
                     .disabled(state.outbox.isEmpty || state.sending)
             }
-            .controlSize(.small)
             if state.sending {
                 Text(verbatim: L("Your phone downloads these by itself if Bluetooth is on. If nothing happens, open PhoneDrop on the phone."))
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(.caption).foregroundStyle(Theme.mute).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

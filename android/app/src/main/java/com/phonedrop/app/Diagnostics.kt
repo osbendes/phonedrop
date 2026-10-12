@@ -39,8 +39,14 @@ object Diagnostics {
                     activity.recreate()
                 }
             }
-            // Screenshots: sample content instead of the real Mac (extras: scene, dialog); scene "off" ends it
-            "DEMO" -> demo(activity, intent.getStringExtra("scene") ?: "off", intent.getStringExtra("dialog"))
+            // Screenshots: sample content instead of the real Mac (extras: scene, dialog, bottom); scene "off" ends it
+            "DEMO" -> {
+                demo(activity, intent.getStringExtra("scene") ?: "off", intent.getStringExtra("dialog"))
+                // `--ez bottom true` shows the lower half of the screen
+                val scroll = activity.findViewById<android.widget.ScrollView>(R.id.scroll)
+                val down = intent.getBooleanExtra("bottom", false)
+                scroll.postDelayed({ scroll.fullScroll(if (down) android.view.View.FOCUS_DOWN else android.view.View.FOCUS_UP) }, 600)
+            }
             // Opens the QR scanner, to check it starts
             "SCAN" -> activity.scan()
             // Finds the Mac over Bluetooth and reads its id; touches no network
@@ -83,9 +89,10 @@ object Diagnostics {
         val files = JSONArray()
         when (scene) {
             "sending" -> Transfers.items += listOf(
+                // The list shows the last one on top
                 item(up, "IMG_20261011_184467.jpg", 5_100_000, 0, Transfers.State.WAITING),
-                item(up, "VID_20261012_143501.mp4", 3_800_000_000, 1_420_000_000, Transfers.State.ACTIVE, 21_400_000.0),
-                item(up, "IMG_20261011_184512.jpg", 4_800_000, 4_800_000, Transfers.State.DONE))
+                item(up, "IMG_20261011_184512.jpg", 4_800_000, 4_800_000, Transfers.State.DONE),
+                item(up, "VID_20261012_143501.mp4", 3_800_000_000, 1_420_000_000, Transfers.State.ACTIVE, 21_400_000.0))
             "receiving" -> {
                 Transfers.items += item(Transfers.Direction.DOWN, "Trailer-4K.mov", 2_100_000_000, 840_000_000,
                     Transfers.State.ACTIVE, 18_200_000.0)
