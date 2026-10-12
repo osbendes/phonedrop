@@ -29,11 +29,12 @@ object Diagnostics {
         val adbOn = Settings.Global.getInt(activity.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1
         if (!adbOn || !prefs.paired) return
         when (action.removePrefix(PREFIX)) {
-            // Screenshots: sets language/theme (extras: lang, theme; "" = system) and restarts the screen
+            // Screenshots: sets language/theme (extras: lang, theme; "system" = follow the phone) and restarts the screen
             "LOOK" -> {
                 val sp = activity.getSharedPreferences(Look.PREFS, 0)
-                val lang = intent.getStringExtra("lang") ?: ""
-                val theme = intent.getStringExtra("theme") ?: ""
+                // "system" rather than "": adb drops empty arguments
+                val lang = intent.getStringExtra("lang")?.takeIf { it != "system" } ?: ""
+                val theme = intent.getStringExtra("theme")?.takeIf { it != "system" } ?: ""
                 if (lang != sp.getString(Look.LANG, "") || theme != sp.getString(Look.THEME, "")) {
                     sp.edit().putString(Look.LANG, lang).putString(Look.THEME, theme).apply()
                     activity.recreate()

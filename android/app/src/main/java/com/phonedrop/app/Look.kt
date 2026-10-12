@@ -25,9 +25,9 @@ object Look {
     fun config(ctx: Context): Configuration {
         val sp = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val cfg = Configuration()
-        val lang = sp.getString(LANG, "")!!.ifEmpty {
-            if (Resources.getSystem().configuration.locales[0].language == "tr") "tr" else "en"
-        }
+        // Anything but an explicit choice means "system"
+        val lang = sp.getString(LANG, "").takeIf { it == "en" || it == "tr" }
+            ?: if (Resources.getSystem().configuration.locales[0].language == "tr") "tr" else "en"
         cfg.setLocale(Locale.forLanguageTag(lang))
         when (sp.getString(THEME, "")) {
             "light" -> cfg.uiMode = Configuration.UI_MODE_NIGHT_NO

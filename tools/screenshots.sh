@@ -60,7 +60,7 @@ if [[ $WHAT == *phone* ]]; then
       diag LOOK --es lang $lang --es theme $other; sleep $PAUSE
     done
   done
-  diag LOOK --es lang "" --es theme ""; sleep $PAUSE
+  diag LOOK --es lang system --es theme system; sleep $PAUSE
   diag DEMO --es scene off
 fi
 echo "Screenshots are in $OUT"
