@@ -17,6 +17,49 @@
     <key>NSHumanReadableCopyright</key><string>© 2026 PhoneDrop</string>
     <key>NSLocalNetworkUsageDescription</key><string>PhoneDrop receives files from your phone over your local Wi-Fi network.</string>
     <key>NSBluetoothAlwaysUsageDescription</key><string>PhoneDrop uses Bluetooth to connect to your phone directly when there's no Wi-Fi network.</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <!-- Named categories: macOS only lists an app under "Open With" for types it claims explicitly -->
+        <dict>
+            <key>CFBundleTypeName</key><string>Photos, videos and documents</string>
+            <key>CFBundleTypeRole</key><string>Viewer</string>
+            <key>LSHandlerRank</key><string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.image</string>
+                <string>public.movie</string>
+                <string>public.audio</string>
+                <string>public.text</string>
+                <string>public.composite-content</string>
+                <string>public.archive</string>
+                <string>public.disk-image</string>
+                <string>public.presentation</string>
+                <string>public.spreadsheet</string>
+                <string>public.database</string>
+                <string>public.3d-content</string>
+                <string>public.font</string>
+                <string>public.executable</string>
+                <string>com.android.package-archive</string>
+            </array>
+        </dict>
+        <!-- Everything else: reachable through "Other…" and by dropping on the Dock icon -->
+        <dict>
+            <key>CFBundleTypeName</key><string>Any file</string>
+            <key>CFBundleTypeRole</key><string>Viewer</string>
+            <key>LSHandlerRank</key><string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array><string>public.data</string><string>public.content</string></array>
+        </dict>
+    </array>
+    <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMenuItem</key><dict><key>default</key><string>Send with PhoneDrop</string></dict>
+            <key>NSMessage</key><string>sendToPhone</string>
+            <key>NSPortName</key><string>PhoneDrop</string>
+            <key>NSSendFileTypes</key><array><string>public.item</string></array>
+        </dict>
+    </array>
     <key>NSBonjourServices</key><array><string>_phonedrop._tcp</string></array>
 </dict>
 </plist>

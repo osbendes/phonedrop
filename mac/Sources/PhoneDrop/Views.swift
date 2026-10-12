@@ -9,7 +9,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Finder's right-click > Services > "Send with PhoneDrop" (declared in Info.plist)
+        NSApp.servicesProvider = self
+        NSUpdateDynamicServices()
         if !CommandLine.arguments.contains("--snapshot") { showWindow() }
+    }
+
+    /// "Open With > PhoneDrop" and files dropped on the Dock icon.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        queueForPhone(urls)
+    }
+
+    /// Services menu entry point; the selector name matches NSMessage in Info.plist.
+    @objc func sendToPhone(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>) {
+        let urls = pboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        queueForPhone(urls)
+    }
+
+    private func queueForPhone(_ urls: [URL]) {
+        let files = urls.filter { $0.isFileURL }
+        guard !files.isEmpty else { return }
+        AppState.shared.addToOutbox(files)
+        showWindow()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
