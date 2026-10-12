@@ -1,6 +1,8 @@
 import Foundation
 import Network
 
+/// A parsed HTTP request; the body is read completely before the handler runs.
+/// TR: Ayrıştırılmış HTTP isteği; gövde, işleyici çalışmadan önce tamamen okunur.
 struct HTTPRequest {
     let method: String
     let target: String
@@ -15,6 +17,7 @@ struct HTTPResponse {
     var contentType = "application/octet-stream"
     var body = Data()
     /// For streamed responses: total length and a producer that writes it.
+    /// TR: Akış halindeki yanıtlar için: toplam uzunluk ve gövdeyi yazan üretici.
     var streamLength: Int64? = nil
     var stream: ((StreamWriter) -> Void)? = nil
 
@@ -27,6 +30,7 @@ struct HTTPResponse {
 }
 
 /// Lets a handler push a streamed body with backpressure.
+/// TR: Bir işleyicinin akış halindeki gövdeyi geri basınçla (backpressure) göndermesini sağlar.
 final class StreamWriter {
     fileprivate let conn: NWConnection
     fileprivate let done: (Bool) -> Void
@@ -45,11 +49,17 @@ final class StreamWriter {
 
 protocol HTTPHandler: AnyObject {
     /// Called on a background queue; must call `respond` exactly once.
+    /// TR: Arka plan kuyruğunda çağrılır; `respond` tam olarak bir kez çağrılmalıdır.
     func handle(_ req: HTTPRequest, respond: @escaping (HTTPResponse) -> Void)
     /// Upload progress while a request body is still arriving (delta may be negative on abort).
+    /// TR: İstek gövdesi gelirken yükleme ilerlemesi (iptalde delta negatif olabilir).
     func bodyProgress(_ head: HTTPRequest, delta: Int)
 }
 
+/// A small HTTP/1.1 server on Network.framework: one listener, keep-alive connections, and Bonjour
+/// advertising. Uploads arrive in chunks, so reading each body into memory stays cheap.
+/// TR: Network.framework üzerinde küçük bir HTTP/1.1 sunucusu: tek dinleyici, açık tutulan bağlantılar ve
+/// Bonjour duyurusu. Yüklemeler parçalar halinde geldiği için her gövdeyi belleğe okumak ucuz kalır.
 final class HTTPServer {
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "phonedrop.http")
@@ -97,6 +107,8 @@ final class HTTPServer {
     }
 }
 
+/// One client connection: parses requests, reports body progress and writes responses.
+/// TR: Tek bir istemci bağlantısı: istekleri ayrıştırır, gövde ilerlemesini bildirir ve yanıtları yazar.
 private final class HTTPConnection {
     let conn: NWConnection
     unowned let server: HTTPServer

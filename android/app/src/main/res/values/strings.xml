@@ -13,7 +13,7 @@
     <string name="btn_change">Change</string>
     <string name="btn_pick_gallery">Choose photos &amp; videos</string>
     <string name="btn_pick_files">Choose files</string>
-    <string name="tip_share">Tip: in your gallery, select videos › Share › PhoneDrop.</string>
+    <string name="tip_share">Tip: in any app, select files › Share › PhoneDrop.</string>
     <string name="hdr_transfers">TRANSFERS</string>
     <string name="hdr_from_mac">FROM YOUR MAC</string>
     <string name="action_stop">Stop</string>

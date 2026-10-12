@@ -7,6 +7,8 @@ private let log = Logger(subsystem: "com.osbendes.phonedrop", category: "direct"
 
 /// Direct mode (docs/PROTOCOL.md): a Bluetooth LE handshake that makes the Mac join the phone's
 /// local-only hotspot when there's no shared network.
+/// TR: Doğrudan mod (docs/PROTOCOL.md): ortak ağ yokken Mac'in telefonun yerel hotspot'una katılmasını
+/// sağlayan Bluetooth LE el sıkışması.
 final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     private static let suffix = "-9D4B-4F2A-8E61-50484F4E4544"
     static let serviceUUID = CBUUID(string: "C0DE0001" + suffix)
@@ -14,12 +16,14 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     static let joinUUID = CBUUID(string: "C0DE0003" + suffix)
     static let statusUUID = CBUUID(string: "C0DE0004" + suffix)
     /// Advertised instead of `serviceUUID` while the Mac has files it wants the phone to fetch now
+    /// TR: Mac'in, telefonun hemen indirmesini istediği dosyaları varken `serviceUUID` yerine yayınlanır
     static let wakeUUID = CBUUID(string: "C0DE0005" + suffix)
 
     var key: () -> Data = { Data() }
     var port: () -> UInt16 = { 0 }
     var allowOnWiFi: () -> Bool = { false }
     /// Called on the main queue with the SSID being joined, or nil when back to normal.
+    /// TR: Ana kuyrukta, katılınan ağın SSID'siyle çağrılır; normale dönülünce nil gelir.
     var onStateChange: ((String?) -> Void)?
 
     private let q = DispatchQueue(label: "phonedrop.ble")
@@ -33,6 +37,8 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     private var wifiInterface: String?
 
     /// Tells nearby paired phones (which scan for `wakeUUID` in the background) to fetch the outbox.
+    /// TR: Yakındaki eşleşmiş telefonlara (arka planda `wakeUUID` tararlar) giden kutusunu indirmelerini
+    /// söyler.
     func setWaking(_ on: Bool) {
         q.async {
             guard self.waking != on else { return }
@@ -46,6 +52,8 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     }
 
     /// One 128-bit UUID is all that fits in an advertisement next to the name, so it's one or the other.
+    /// TR: Yayın paketine adın yanında yalnızca bir 128 bitlik UUID sığar; bu yüzden ya biri ya öteki
+    /// yayınlanır.
     private func advertise(_ p: CBPeripheralManager) {
         p.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [waking ? Self.wakeUUID : Self.serviceUUID],
                             CBAdvertisementDataLocalNameKey: "PhoneDrop"])
@@ -195,6 +203,7 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
     }
 
     /// The phone is done: forget its hotspot so macOS goes back to the usual Wi-Fi.
+    /// TR: Telefonun işi bitti: macOS her zamanki Wi-Fi'a dönsün diye hotspot'u unut.
     func end(keepStatus: Bool = false) {
         lock.lock()
         let ssid = joinedSSID
@@ -208,6 +217,7 @@ final class DirectMode: NSObject, CBPeripheralManagerDelegate {
 }
 
 /// Thin wrapper around macOS's `networksetup`, which works on macOS 13+ without extra permissions.
+/// TR: macOS'un `networksetup` aracı için ince bir sarmalayıcı; macOS 13+ üzerinde ek izin gerektirmez.
 enum WiFi {
     static func run(_ args: [String]) -> String {
         let p = Process()
@@ -223,6 +233,7 @@ enum WiFi {
     }
 
     /// The Wi-Fi device name (en0 on laptops, often en1 on desktops with Ethernet).
+    /// TR: Wi-Fi aygıt adı (dizüstülerde en0, Ethernet'li masaüstülerde çoğunlukla en1).
     static func interface() -> String? {
         let lines = run(["-listallhardwareports"]).components(separatedBy: "\n")
         for (i, line) in lines.enumerated() where line.hasPrefix("Hardware Port:") &&
@@ -235,6 +246,7 @@ enum WiFi {
     }
 
     /// The interface's IPv4 address, ignoring self-assigned 169.254.x.x.
+    /// TR: Arayüzün IPv4 adresi; kendiliğinden atanan 169.254.x.x adresleri yok sayılır.
     static func ipv4(_ iface: String) -> String? {
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return nil }

@@ -63,7 +63,7 @@ Successful JSON responses are sealed.
 | PUT    | `/api/chunk?id=&i=`          | sealed chunk            | `{}`          |
 | POST   | `/api/finish?id=`            | –                       | `{name}`      |
 | POST   | `/api/cancel?id=`            | –                       | `{}`          |
-| POST   | `/api/outbox`                | –                       | `{files:[{id,name,size,mtime}]}` |
+| POST   | `/api/outbox`                | –                       | `{files:[{id,name,size,mtime}], send}` |
 | GET    | `/api/dl?f=<fileId>&from=<frame>` | –                  | frame stream  |
 
 ### Uploads (phone → Mac)
@@ -120,7 +120,11 @@ The phone normally pulls: it lists the outbox and downloads what the user taps. 
 **Send** on the Mac, the Mac advertises `C0DE0005-…` *instead of* `C0DE0001-…` (only one 128-bit UUID fits
 in an advertisement) until the outbox is empty, or for two minutes after the last activity. The phone
 keeps a low-power background scan for `C0DE0005-…` registered with Android. When it fires, the app
-lists the outbox of its paired Mac and downloads everything. A Mac the phone isn't paired with can
+lists the outbox of its paired Mac and downloads everything.
+
+Android pauses every Bluetooth scan while any app on the phone is connecting over Bluetooth, so the
+wake-up can be late or missed. As a fallback, `/api/outbox` returns `send: true` while Send is pending;
+the app downloads everything as soon as it is opened and sees that flag. A Mac the phone isn't paired with can
 trigger the scan, but the phone only ever talks to its own Mac, so nothing is downloaded.
 
 All characteristic and service UUIDs share the suffix `-9D4B-4F2A-8E61-50484F4E4544`.

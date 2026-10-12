@@ -17,6 +17,9 @@ import android.util.Log
 /**
  * "Send" on the Mac: the Mac flags its Bluetooth advertisement, and a background scan that Android
  * keeps running for us (even when the app isn't) wakes [WakeReceiver], which downloads the outbox.
+ *
+ * TR: Mac'te "Gönder": Mac Bluetooth yayınına işaret koyar; Android'in bizim için (uygulama çalışmasa
+ * bile) sürdürdüğü arka plan taraması [WakeReceiver]'ı uyandırır, o da giden kutusunu indirir.
  */
 object Wake {
     private const val TAG = "PhoneDrop"
@@ -26,7 +29,12 @@ object Wake {
         ctx, 7, Intent(ctx, WakeReceiver::class.java).setAction(ACTION),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
 
-    /** Idempotent; call whenever the app runs. The scan stops if Bluetooth is turned off. */
+    /**
+     * Idempotent; call whenever the app runs. The scan stops if Bluetooth is turned off.
+     *
+     * TR: Tekrar çağrılması zararsızdır; uygulama her çalıştığında çağır. Bluetooth kapatılırsa tarama
+     * durur.
+     */
     @SuppressLint("MissingPermission")
     fun register(ctx: Context) {
         val app = ctx.applicationContext
@@ -36,7 +44,11 @@ object Wake {
         try {
             val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(DirectLink.WAKE)).build()
             val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build()
-            val rc = adapter.bluetoothLeScanner?.startScan(listOf(filter), settings, pendingIntent(app))
+            // Start from a clean slate: Android suspends scans while any app is connecting over
+            // Bluetooth, and a scan that has been through that can stop delivering results.
+            val scanner = adapter.bluetoothLeScanner ?: return
+            runCatching { scanner.stopScan(pendingIntent(app)) }
+            val rc = scanner.startScan(listOf(filter), settings, pendingIntent(app))
             Log.i(TAG, "wake: background scan registered ($rc)")
         } catch (e: Exception) {
             Log.w(TAG, "wake: can't register scan: $e")
@@ -44,6 +56,13 @@ object Wake {
     }
 }
 
+/**
+ * Receives the background-scan result, and the boot and app-update events after which the scan has to be
+ * registered again.
+ *
+ * TR: Arka plan taramasının sonucunu ve taramanın yeniden kaydedilmesi gereken açılış ve uygulama
+ * güncelleme olaylarını alır.
+ */
 class WakeReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         when (intent.action) {

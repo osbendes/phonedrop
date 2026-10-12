@@ -8,7 +8,6 @@ android/local.properties
 android/keystore.properties
 *.jks
 *.keystore
-legacy/PhoneDrop.app/
-legacy/PhoneDrop.apk
+legacy/
 release/
 .testlogs/

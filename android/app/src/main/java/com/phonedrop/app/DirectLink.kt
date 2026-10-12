@@ -32,6 +32,9 @@ import org.json.JSONObject
 /**
  * Direct mode (docs/PROTOCOL.md): when there's no shared network, find the paired Mac over
  * Bluetooth LE, start a local-only hotspot and ask the Mac to join it. Files still go over Wi-Fi.
+ *
+ * TR: Doğrudan mod (docs/PROTOCOL.md): ortak ağ yokken eşleşmiş Mac'i Bluetooth LE ile bulur, yerel bir
+ * hotspot açar ve Mac'ten ona katılmasını ister. Dosyalar yine Wi-Fi üzerinden gider.
  */
 class DirectLink(ctx: Context, private val prefs: Prefs) {
     companion object {
@@ -41,10 +44,18 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
         val INFO: UUID = UUID.fromString("C0DE0002$SUFFIX")
         val JOIN: UUID = UUID.fromString("C0DE0003$SUFFIX")
         val STATUS: UUID = UUID.fromString("C0DE0004$SUFFIX")
-        /** The Mac advertises this instead of [SERVICE] while it wants the phone to fetch its outbox. */
+        /**
+         * The Mac advertises this instead of [SERVICE] while it wants the phone to fetch its outbox.
+         *
+         * TR: Mac, telefonun giden kutusunu indirmesini istediğinde [SERVICE] yerine bunu yayınlar.
+         */
         val WAKE: UUID = UUID.fromString("C0DE0005$SUFFIX")
 
-        /** Runtime permissions direct mode needs on this Android version. */
+        /**
+         * Runtime permissions direct mode needs on this Android version.
+         *
+         * TR: Doğrudan modun bu Android sürümünde ihtiyaç duyduğu çalışma zamanı izinleri.
+         */
         fun permissions(): Array<String> = buildList {
             if (Build.VERSION.SDK_INT >= 31) {
                 add(Manifest.permission.BLUETOOTH_SCAN)
@@ -63,10 +74,19 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
         }
     }
 
-    /** Where to reach the Mac: over the phone's own hotspot, or on the network both are already on. */
+    /**
+     * Where to reach the Mac: over the phone's own hotspot, or on the network both are already on.
+     *
+     * TR: Mac'e nereden ulaşılacağı: telefonun kendi hotspot'u üzerinden ya da ikisinin zaten bulunduğu
+     * ağdan.
+     */
     class Target(val host: String, val port: Int, val hotspot: Boolean)
 
-    /** Failure with a user-facing string resource. */
+    /**
+     * Failure with a user-facing string resource.
+     *
+     * TR: Kullanıcıya gösterilecek metin kaynağıyla birlikte hata.
+     */
     class DirectException(val reason: Int) : IOException("direct mode failed")
 
     private val app = ctx.applicationContext
@@ -75,8 +95,11 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
     val active get() = reservation != null
 
     /**
-     * Blocking. Returns the Mac's address on the phone's hotspot. [progress] receives string
-     * resources to show while it works.
+     * Blocking. Returns where the Mac can be reached. [progress] receives string resources to show while
+     * it works; [tryLan] checks an address on the normal network first.
+     *
+     * TR: Bloklayan çağrı. Mac'e nereden ulaşılacağını döndürür. [progress], çalışırken gösterilecek metin
+     * kaynaklarını alır; [tryLan] önce normal ağdaki bir adresi dener.
      */
     @SuppressLint("MissingPermission")
     fun connect(progress: (Int) -> Unit, tryLan: (String, Int) -> Boolean = { _, _ -> false }): Target {
@@ -154,6 +177,9 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
     /**
      * Diagnostic: scans, connects and reads INFO from every PhoneDrop Mac nearby, without touching
      * Wi-Fi. Returns a human-readable report (also written to logcat).
+     *
+     * TR: Teşhis: yakındaki her PhoneDrop Mac'ini tarar, bağlanır ve INFO'yu okur; Wi-Fi'a dokunmaz.
+     * Okunabilir bir rapor döndürür (logcat'e de yazılır).
      */
     @SuppressLint("MissingPermission")
     fun probe(): String {
@@ -196,7 +222,11 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
         return out.toString()
     }
 
-    /** Stops the hotspot. The Mac notices and returns to its usual Wi-Fi. */
+    /**
+     * Stops the hotspot. The Mac notices and returns to its usual Wi-Fi.
+     *
+     * TR: Hotspot'u kapatır. Mac bunu fark edip her zamanki Wi-Fi'ına döner.
+     */
     fun close() {
         runCatching { reservation?.close() }
         reservation = null
@@ -266,7 +296,11 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
         return synchronized(found) { found.values.toList() }
     }
 
-    /** Minimal blocking wrapper around BluetoothGatt's callbacks. */
+    /**
+     * Minimal blocking wrapper around BluetoothGatt's callbacks.
+     *
+     * TR: BluetoothGatt geri çağrıları için en küçük bloklayan sarmalayıcı.
+     */
     @SuppressLint("MissingPermission")
     private inner class Gatt(private val device: BluetoothDevice) : BluetoothGattCallback() {
         private val events = LinkedBlockingQueue<Any>()
@@ -279,6 +313,10 @@ class DirectLink(ctx: Context, private val prefs: Prefs) {
          * Connects with the usual Android workarounds: retry (the first attempt often fails with
          * status 133, especially on Xiaomi and Samsung), deliver callbacks on the main looper, and
          * pause briefly before MTU negotiation and service discovery.
+         *
+         * TR: Android'in bilinen sorunlarına karşı önlemlerle bağlanır: yeniden deneme (ilk deneme
+         * özellikle Xiaomi ve Samsung'da sık sık 133 koduyla başarısız olur), geri çağrıların ana döngüde
+         * teslimi, MTU pazarlığı ve servis keşfinden önce kısa beklemeler.
          */
         fun open() {
             var lastError: Exception? = null

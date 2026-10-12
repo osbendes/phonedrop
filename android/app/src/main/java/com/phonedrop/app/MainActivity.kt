@@ -28,10 +28,20 @@ import com.phonedrop.app.core.PairInfo
 import kotlin.concurrent.thread
 import org.json.JSONObject
 
+/**
+ * The only screen: pairing, picking files, the destination folder, the transfer list and the files the Mac
+ * offers.
+ *
+ * TR: Tek ekran: eşleştirme, dosya seçme, hedef klasör, aktarım listesi ve Mac'in sunduğu dosyalar.
+ */
 class MainActivity : Activity() {
 
     companion object {
-        /** Download page with the Mac app; short enough to type on the Mac. */
+        /**
+         * Download page with the Mac app; short enough to type on the Mac.
+         *
+         * TR: Mac uygulamasının indirme sayfası; Mac'te elle yazılabilecek kadar kısa.
+         */
         const val MAC_DOWNLOAD_URL = "https://osbendes.github.io/phonedrop/"
     }
 
@@ -74,53 +84,13 @@ class MainActivity : Activity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
         intent?.data?.let { pairWith(it.toString()) }
-        runDiagnostics(intent)
-    }
-
-    /** `adb shell am start -n <pkg>/com.phonedrop.app.MainActivity -a com.osbendes.phonedrop.DIAG_BLE` */
-    private fun runDiagnostics(i: Intent?) {
-        if (!link.prefs.paired) return
-        when (i?.action) {
-            "com.osbendes.phonedrop.DIAG_BLE" -> thread {
-                val report = DirectLink(this, link.prefs).probe()
-                runOnUiThread { Toast.makeText(this, report.trim(), Toast.LENGTH_LONG).show() }
-            }
-            // Sends a random file through the normal upload path (share sheet → service → Mac)
-            "com.osbendes.phonedrop.DIAG_SEND" -> thread {
-                val mb = i.getIntExtra("mb", 20)
-                val f = java.io.File(cacheDir, i.getStringExtra("name") ?: "pd-diag.bin")
-                val buf = ByteArray(1 shl 20)
-                val rnd = java.security.SecureRandom()
-                f.outputStream().use { out -> repeat(mb) { rnd.nextBytes(buf); out.write(buf) } }
-                android.util.Log.i("PhoneDrop", "diag: sending ${f.name} (${f.length()} bytes)")
-                TransferService.upload(this, listOf(android.net.Uri.fromFile(f)))
-            }
-            // Full handshake incl. hotspot; if the Mac is on Wi-Fi it answers "on-wifi" and nothing switches
-            "com.osbendes.phonedrop.DIAG_DIRECT" -> thread {
-                val d = DirectLink(this, link.prefs)
-                val result = try {
-                    val t = d.connect({ android.util.Log.i("PhoneDrop", "diag: " + getString(it)) })
-                    val h = t.host
-                    val p = t.port
-                    val c = com.phonedrop.app.core.MacClient("http://$h:$p", link.prefs.key!!)
-                    val name = c.hello("diag").optString("name")
-                    runCatching { c.post("/api/direct/end", timeoutMs = 3000) }
-                    "ready: $h:$p, hello from $name"
-                } catch (e: DirectLink.DirectException) {
-                    "failed: " + getString(e.reason)
-                } finally {
-                    d.close()
-                }
-                android.util.Log.i("PhoneDrop", "diag: $result")
-                runOnUiThread { Toast.makeText(this, result, Toast.LENGTH_LONG).show() }
-            }
-        }
+        Diagnostics.run(this, intent, link.prefs)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.data?.let { pairWith(it.toString()) }
-        runDiagnostics(intent)
+        Diagnostics.run(this, intent, link.prefs)
     }
 
     override fun onResume() {
@@ -136,7 +106,12 @@ class MainActivity : Activity() {
         Wake.register(this)
     }
 
-    /** Asks once, after pairing, for what direct mode needs. Denying only disables that fallback. */
+    /**
+     * Asks once, after pairing, for what direct mode needs. Denying only disables that fallback.
+     *
+     * TR: Eşleştirmeden sonra, doğrudan modun ihtiyaç duyduğu izinleri bir kez sorar. Reddetmek yalnızca o
+     * yedek yolu kapatır.
+     */
     private fun askDirectPermissions() {
         val sp = getSharedPreferences("ui", MODE_PRIVATE)
         if (!link.prefs.paired || DirectLink.hasPermissions(this) || sp.getBoolean("directAsked", false)) return
@@ -166,7 +141,11 @@ class MainActivity : Activity() {
             .show()
     }
 
-    /** The Mac app's download page as a QR code, with share and copy. */
+    /**
+     * The Mac app's download page as a QR code, with share and copy.
+     *
+     * TR: Mac uygulamasının indirme sayfası karekod olarak; paylaşma ve kopyalama seçenekleriyle.
+     */
     private fun showMacAppDialog() {
         val d = resources.displayMetrics.density
         val box = LinearLayout(this).apply {
@@ -223,7 +202,11 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.destFolder).text = folder.ifEmpty { getString(R.string.dest_default) }
     }
 
-    /** Lets the user type a subfolder or pick one that already exists on the Mac. */
+    /**
+     * Lets the user type a subfolder or pick one that already exists on the Mac.
+     *
+     * TR: Kullanıcının bir alt klasör yazmasını ya da Mac'te zaten var olan birini seçmesini sağlar.
+     */
     private fun showFolderDialog() {
         val d = resources.displayMetrics.density
         val box = LinearLayout(this).apply {
@@ -293,8 +276,12 @@ class MainActivity : Activity() {
             .show()
     }
 
-    /** Google's code scanner: runs in Play services, needs no camera permission. */
-    private fun scan() {
+    /**
+     * Google's code scanner: runs in Play services, needs no camera permission.
+     *
+     * TR: Google'ın kod tarayıcısı: Play hizmetlerinde çalışır, kamera izni gerektirmez.
+     */
+    fun scan() {
         val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
         GmsBarcodeScanning.getClient(this, options).startScan()
             .addOnSuccessListener { code -> code.rawValue?.let { pairWith(it) } }
@@ -351,7 +338,11 @@ class MainActivity : Activity() {
         status.setTextColor(getColor(when (macOnline) { true -> R.color.ok; false -> R.color.warn; null -> R.color.mute }))
     }
 
-    /** Checks the Mac is reachable and lists its "Send to Phone" files. */
+    /**
+     * Checks the Mac is reachable and lists its "Send to Phone" files.
+     *
+     * TR: Mac'e ulaşılabildiğini kontrol eder ve "Telefona Gönder" dosyalarını listeler.
+     */
     private fun refreshMac() {
         if (!link.prefs.paired) { renderOutbox(null, null); return }
         thread {
@@ -361,6 +352,12 @@ class MainActivity : Activity() {
                 macOnline = result.isSuccess
                 renderMac()
                 renderOutbox(result.isSuccess, result.getOrNull())
+                // "Send" was pressed on the Mac but the Bluetooth wake-up didn't reach us: fetch now
+                val json = result.getOrNull()
+                if (json != null && json.optBoolean("send") && json.getJSONArray("files").length() > 0 &&
+                    Transfers.active().isEmpty()) {
+                    TransferService.fetch(this)
+                }
             }
         }
     }

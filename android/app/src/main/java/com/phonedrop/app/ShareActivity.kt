@@ -6,7 +6,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 
-/** Share-sheet target: hands the files to the background service and closes right away. */
+/**
+ * Share-sheet target: hands the files to the background service and closes right away.
+ *
+ * TR: Paylaş menüsü hedefi: dosyaları arka plan servisine verir ve hemen kapanır.
+ */
 class ShareActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -18,6 +18,9 @@ import org.junit.Test
  * {"base": "http://127.0.0.1:8765", "saveDir": "...", "outboxId": "...", "outboxPath": "...",
  *  "outboxId2": "...", "outboxPath2": "..."}  (two different files in the Mac's "Send to Phone" list)
  * The key is read from ~/Library/Application Support/PhoneDrop/key.
+ *
+ * TR: Çalışan bir PhoneDrop Mac uygulamasıyla konuşur. /tmp/phonedrop-test.json yoksa atlanır (biçimi
+ * yukarıda). Anahtar ~/Library/Application Support/PhoneDrop/key dosyasından okunur.
  */
 class MacIntegrationTest {
     private lateinit var cfg: JSONObject

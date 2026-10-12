@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 
 /// AES-256-GCM helpers (see docs/PROTOCOL.md).
+/// TR: AES-256-GCM yardımcıları (bkz. docs/PROTOCOL.md).
 enum PDCrypto {
     static func seal(_ data: Data, key: SymmetricKey, aad: String) throws -> Data {
         let box = try AES.GCM.seal(data, using: key, nonce: AES.GCM.Nonce(), authenticating: Data(aad.utf8))
@@ -38,6 +39,7 @@ extension Data {
 }
 
 /// Stores the pairing key in Application Support.
+/// TR: Eşleştirme anahtarını Application Support klasöründe saklar.
 enum KeyStore {
     static var dir: URL {
         let d = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

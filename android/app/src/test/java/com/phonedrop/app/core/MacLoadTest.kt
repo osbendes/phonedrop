@@ -10,7 +10,11 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
-/** 1 GiB upload in 8 MiB chunks over 4 parallel connections, like the app does. */
+/**
+ * 1 GiB upload in 8 MiB chunks over 4 parallel connections, like the app does.
+ *
+ * TR: Uygulamanın yaptığı gibi, 4 paralel bağlantı üzerinden 8 MiB'lık parçalarla 1 GiB yükleme.
+ */
 class MacLoadTest {
     @Test
     fun parallelUploadOfOneGigabyte() {

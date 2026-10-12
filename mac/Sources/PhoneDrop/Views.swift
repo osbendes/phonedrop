@@ -4,6 +4,8 @@ import UniformTypeIdentifiers
 
 /// Shows the same content as the menu bar popover in a regular window. The menu bar icon can be
 /// hidden (e.g. behind the notch when the menu bar is full), so launching the app opens this window.
+/// TR: Menü çubuğu penceresindeki içeriğin aynısını normal bir pencerede gösterir. Menü çubuğu simgesi
+/// gizlenebildiği için (ör. çubuk doluyken çentiğin arkasında) uygulama açılınca bu pencere açılır.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
@@ -20,11 +22,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// "Open With > PhoneDrop" and files dropped on the Dock icon.
+    /// TR: "Birlikte Aç > PhoneDrop" ve Dock simgesine bırakılan dosyalar.
     func application(_ application: NSApplication, open urls: [URL]) {
         queueForPhone(urls)
     }
 
     /// Services menu entry point; the selector name matches NSMessage in Info.plist.
+    /// TR: Hizmetler menüsünün giriş noktası; seçici adı Info.plist'teki NSMessage ile eşleşir.
     @objc func sendToPhone(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>) {
         let urls = pboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         queueForPhone(urls)
@@ -57,6 +61,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// App entry point: a menu bar item, plus the regular window that AppDelegate manages.
+/// TR: Uygulamanın giriş noktası: bir menü çubuğu öğesi ve AppDelegate'in yönettiği normal pencere.
 @main
 struct PhoneDropApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
@@ -97,6 +103,8 @@ struct PhoneDropApp: App {
     }
 }
 
+/// The main view, shared by the menu bar popover and the window.
+/// TR: Menü çubuğu penceresi ile normal pencerenin paylaştığı ana görünüm.
 struct MenuContent: View {
     @EnvironmentObject var state: AppState
 
@@ -209,6 +217,7 @@ struct MenuContent: View {
 }
 
 /// Where incoming files go, with a menu to change it.
+/// TR: Gelen dosyaların gideceği yer ve onu değiştirme menüsü.
 struct SaveLocationRow: View {
     @EnvironmentObject var state: AppState
 
@@ -244,6 +253,8 @@ struct SaveLocationRow: View {
 }
 
 /// The pairing / app-download codes in their own closable window, so the main view stays as it is.
+/// TR: Eşleştirme / uygulama indirme kodları kendi kapatılabilir penceresinde durur; ana görünüm olduğu
+/// gibi kalır.
 @MainActor
 enum PairWindow {
     private static var window: NSWindow?
@@ -277,6 +288,8 @@ struct PairSheet: View {
     }
 }
 
+/// The pairing QR code or the app-download QR code, with instructions.
+/// TR: Eşleştirme karekodu ya da uygulama indirme karekodu, yönergeleriyle birlikte.
 struct PairView: View {
     @EnvironmentObject var state: AppState
 
@@ -335,6 +348,8 @@ struct PairView: View {
     }
 }
 
+/// One transfer in progress: name, progress bar, speed and time left.
+/// TR: Süren tek bir aktarım: ad, ilerleme çubuğu, hız ve kalan süre.
 struct TransferRow: View {
     let t: TransferSnapshot
 
@@ -359,6 +374,8 @@ struct TransferRow: View {
     }
 }
 
+/// The "Send to Phone" list: drop target, Add Files, Clear All and Send.
+/// TR: "Telefona Gönder" listesi: bırakma alanı, Dosya Ekle, Tümünü Temizle ve Gönder.
 struct OutboxView: View {
     @EnvironmentObject var state: AppState
 

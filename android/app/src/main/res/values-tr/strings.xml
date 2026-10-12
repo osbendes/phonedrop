@@ -11,7 +11,7 @@
     <string name="btn_change">Değiştir</string>
     <string name="btn_pick_gallery">Fotoğraf ve video seç</string>
     <string name="btn_pick_files">Dosya seç</string>
-    <string name="tip_share">İpucu: Galeri\'de videoları seç › Paylaş › PhoneDrop.</string>
+    <string name="tip_share">İpucu: Herhangi bir uygulamada dosyaları seç › Paylaş › PhoneDrop.</string>
     <string name="hdr_transfers">AKTARIMLAR</string>
     <string name="hdr_from_mac">MAC\'TEN GELENLER</string>
     <string name="action_stop">Durdur</string>

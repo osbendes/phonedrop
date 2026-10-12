@@ -10,14 +10,26 @@ import java.net.URL
 import javax.crypto.AEADBadTagException
 import org.json.JSONObject
 
+/**
+ * The Mac answered with an error status.
+ *
+ * TR: Mac bir hata durum koduyla yanıt verdi.
+ */
 class HttpStatusException(val code: Int, msg: String) : IOException(msg)
 
-/** Thrown when the Mac rejects our key (e.g. pairing was reset). */
+/**
+ * Thrown when the Mac rejects our key (e.g. pairing was reset).
+ *
+ * TR: Mac anahtarımızı reddettiğinde fırlatılır (ör. eşleştirme sıfırlanmışsa).
+ */
 class UnauthorizedException : IOException("unauthorized")
 
 /**
  * Protocol v2 client (docs/PROTOCOL.md). Pure JVM so it can be tested against the real Mac app.
  * [opener] lets Android route the connection over Wi-Fi.
+ *
+ * TR: Protokol v2 istemcisi (docs/PROTOCOL.md). Gerçek Mac uygulamasına karşı test edilebilsin diye saf
+ * JVM kodudur. [opener], Android'in bağlantıyı Wi-Fi üzerinden yönlendirmesini sağlar.
  */
 class MacClient(
     val base: String,
@@ -59,7 +71,11 @@ class MacClient(
         return JSONObject(plain.decodeToString())
     }
 
-    /** POST an encrypted JSON body (or none) and return the decrypted JSON response. */
+    /**
+     * POST an encrypted JSON body (or none) and return the decrypted JSON response.
+     *
+     * TR: Şifreli bir JSON gövdesi (ya da boş gövde) gönderir ve çözülmüş JSON yanıtını döndürür.
+     */
     fun post(path: String, query: String = "", body: JSONObject? = null, timeoutMs: Int = 30_000): JSONObject {
         val c = connect("POST", path + query, timeoutMs)
         val bytes = body?.let { crypto.seal(it.toString().toByteArray(), "pd2 req $path") } ?: ByteArray(0)
@@ -73,12 +89,20 @@ class MacClient(
     fun hello(device: String, timeoutMs: Int = 4_000): JSONObject =
         post("/api/hello", body = JSONObject().put("device", device), timeoutMs = timeoutMs)
 
-    /** [dir] is an optional subfolder of the Mac's download folder, e.g. "Wedding 2026". */
+    /**
+     * [dir] is an optional subfolder of the Mac's download folder, e.g. "Wedding 2026".
+     *
+     * TR: [dir], Mac'in kayıt klasörünün isteğe bağlı alt klasörüdür, ör. "Düğün 2026".
+     */
     fun init(name: String, size: Long, mtime: Long, chunk: Int, dir: String = ""): JSONObject =
         post("/api/init", body = JSONObject().put("name", name).put("size", size).put("mtime", mtime)
             .put("chunk", chunk).put("dir", dir))
 
-    /** Subfolders that already exist in the Mac's download folder. */
+    /**
+     * Subfolders that already exist in the Mac's download folder.
+     *
+     * TR: Mac'in kayıt klasöründe zaten var olan alt klasörler.
+     */
     fun folders(): JSONObject = post("/api/folders")
 
     fun finish(id: String): JSONObject = post("/api/finish", "?id=$id")
@@ -90,6 +114,9 @@ class MacClient(
     /**
      * Encrypts and uploads one chunk. [progress] receives bytes written so far (of the sealed body);
      * the caller maps that to plaintext progress.
+     *
+     * TR: Bir parçayı şifreler ve yükler. [progress], (şifreli gövdenin) o ana kadar yazılan bayt sayısını
+     * alır; çağıran bunu düz metin ilerlemesine çevirir.
      */
     fun putChunk(id: String, index: Int, plain: ByteArray, len: Int, progress: (Long) -> Unit = {}) {
         val box = crypto.seal(plain, "pd2 chunk $id $index", 0, len)
@@ -114,6 +141,9 @@ class MacClient(
     /**
      * Streams a file from the Mac's outbox starting at [fromFrame]; each decrypted frame
      * (1 MiB, the last one shorter) is handed to [onFrame] in order.
+     *
+     * TR: Mac'in giden kutusundaki bir dosyayı [fromFrame] çerçevesinden başlayarak akış halinde alır;
+     * çözülen her çerçeve (1 MiB, sonuncusu daha kısa) sırayla [onFrame]'e verilir.
      */
     fun download(fileId: String, fromFrame: Int, onFrame: (index: Int, data: ByteArray) -> Unit) {
         val c = connect("GET", "/api/dl?f=$fileId&from=$fromFrame", readTimeoutMs = 60_000)
@@ -140,7 +170,11 @@ class MacClient(
         const val CHUNK = 8 * 1024 * 1024
         const val FRAME = 1 shl 20
 
-        /** Reads exactly [len] bytes unless the stream ends first; returns the count read. */
+        /**
+         * Reads exactly [len] bytes unless the stream ends first; returns the count read.
+         *
+         * TR: Akış daha önce bitmezse tam olarak [len] bayt okur; okunan bayt sayısını döndürür.
+         */
         fun readFully(input: InputStream, buf: ByteArray, len: Int): Int {
             var n = 0
             while (n < len) {

@@ -23,8 +23,8 @@ android {
         applicationId = "com.osbendes.phonedrop"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.0-beta.2"
+        versionCode = 3
+        versionName = "1.4"
     }
 
     signingConfigs {
@@ -45,6 +45,16 @@ android {
             }
             signingConfig = if (keystoreProps.isNotEmpty()) signingConfigs.getByName("upload")
             else signingConfigs.getByName("debug")
+        }
+    }
+    // The Google libraries ship strings for ~80 languages; the app has two
+    androidResources {
+        localeFilters += listOf("en", "tr")
+    }
+    packaging {
+        resources {
+            // Only kotlin-reflect reads these, and the app doesn't use it
+            excludes += listOf("kotlin/**", "META-INF/*.version", "META-INF/*.kotlin_module", "DebugProbesKt.bin")
         }
     }
     compileOptions {

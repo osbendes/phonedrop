@@ -19,7 +19,11 @@ import java.net.URL
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/** The paired Mac. The key never leaves app-private storage. */
+/**
+ * The paired Mac. The key never leaves app-private storage.
+ *
+ * TR: Eşleşmiş Mac. Anahtar, uygulamanın özel depolama alanından asla çıkmaz.
+ */
 class Prefs(ctx: Context) {
     private val sp = ctx.getSharedPreferences("phonedrop", Context.MODE_PRIVATE)
 
@@ -32,7 +36,11 @@ class Prefs(ctx: Context) {
     var macName: String?
         get() = sp.getString("macName", null)
         set(v) = sp.edit().putString("macName", v).apply()
-    /** Subfolder of the Mac's download folder that uploads go to ("" = the folder itself). */
+    /**
+     * Subfolder of the Mac's download folder that uploads go to ("" = the folder itself).
+     *
+     * TR: Yüklemelerin gittiği, Mac'in kayıt klasörünün alt klasörü ("" = klasörün kendisi).
+     */
     var folder: String
         get() = sp.getString("folder", "") ?: ""
         set(v) = sp.edit().putString("folder", v).apply()
@@ -53,6 +61,9 @@ class Prefs(ctx: Context) {
 /**
  * Finds and talks to the paired Mac. Tries the last known address first, then looks for
  * the Mac on the network with Bonjour (its IP may have changed).
+ *
+ * TR: Eşleşmiş Mac'i bulur ve onunla konuşur. Önce bilinen son adresi dener, sonra Mac'i ağda Bonjour ile
+ * arar (IP'si değişmiş olabilir).
  */
 class MacLink(ctx: Context) {
     private val app = ctx.applicationContext
@@ -64,10 +75,20 @@ class MacLink(ctx: Context) {
     private val direct = DirectLink(app, prefs)
     private var directHost: Pair<String, Int>? = null
     private var lastDirectAttempt = 0L
-    /** Why the last direct attempt failed, so the user keeps seeing it between attempts. */
+    /**
+     * Why the last direct attempt failed, so the user keeps seeing it between attempts.
+     *
+     * TR: Son doğrudan bağlantı denemesinin neden başarısız olduğu; denemeler arasında kullanıcı bunu
+     * görmeye devam eder.
+     */
     private var lastDirectError: Int? = null
 
-    /** If Wi-Fi has no internet, Android may route traffic over mobile data; pin it to Wi-Fi. */
+    /**
+     * If Wi-Fi has no internet, Android may route traffic over mobile data; pin it to Wi-Fi.
+     *
+     * TR: Wi-Fi'da internet yoksa Android trafiği mobil veriye yönlendirebilir; bağlantıyı Wi-Fi'a
+     * sabitler.
+     */
     @Suppress("DEPRECATION")
     private fun wifiNetwork(): Network? = cm.allNetworks.firstOrNull {
         cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
@@ -89,6 +110,10 @@ class MacLink(ctx: Context) {
      * Returns a client for a Mac that answered; throws IOException if none can be reached.
      * With [allowDirect], falls back to direct mode (Bluetooth + hotspot) when the phone isn't on
      * the Mac's network; [progress] then receives status string resources.
+     *
+     * TR: Yanıt veren bir Mac için istemci döndürür; hiçbirine ulaşılamazsa IOException fırlatır.
+     * [allowDirect] ile, telefon Mac'in ağında değilse doğrudan moda (Bluetooth + hotspot) geçer;
+     * [progress] o zaman durum metni kaynaklarını alır.
      */
     @Synchronized
     fun client(allowDirect: Boolean = false, progress: (Int) -> Unit = {}): MacClient {
@@ -134,7 +159,11 @@ class MacLink(ctx: Context) {
         throw IOException("Mac not found")
     }
 
-    /** Leaves direct mode: tells the Mac to go back to its Wi-Fi and stops the hotspot. */
+    /**
+     * Leaves direct mode: tells the Mac to go back to its Wi-Fi and stops the hotspot.
+     *
+     * TR: Doğrudan moddan çıkar: Mac'e Wi-Fi'ına dönmesini söyler ve hotspot'u kapatır.
+     */
     @Synchronized
     fun endDirect() {
         if (!direct.active && directHost == null) return
@@ -158,6 +187,9 @@ class MacLink(ctx: Context) {
     /**
      * Explains why the Mac can't be reached, as a string resource id: no Wi-Fi, a different
      * network than the one the Mac was paired on, or (same subnet) the app isn't running.
+     *
+     * TR: Mac'e neden ulaşılamadığını metin kaynağı kimliği olarak açıklar: Wi-Fi yok, Mac'in eşleştiği
+     * ağdan farklı bir ağ ya da (aynı alt ağda) uygulama çalışmıyor.
      */
     fun diagnose(): Int {
         val net = wifiNetwork() ?: return R.string.status_no_wifi
@@ -183,7 +215,11 @@ class MacLink(ctx: Context) {
         if (verified === c) verified = null
     }
 
-    /** Looks for `_phonedrop._tcp` with our `kid` in the TXT record. */
+    /**
+     * Looks for `_phonedrop._tcp` with our `kid` in the TXT record.
+     *
+     * TR: TXT kaydında bizim `kid` değerimizi taşıyan `_phonedrop._tcp` servisini arar.
+     */
     @Suppress("DEPRECATION")
     private fun discover(timeoutMs: Long): Pair<String, Int>? {
         val kid = prefs.kid ?: return null

@@ -11,6 +11,7 @@ extension NSLocking {
 }
 
 /// One file coming from the phone.
+/// TR: Telefondan gelen tek bir dosya.
 final class IncomingTransfer {
     let id: String
     let name: String
@@ -19,6 +20,7 @@ final class IncomingTransfer {
     let chunk: Int
     var done: Set<Int>
     /// Subfolder of the download folder chosen on the phone ("" = the download folder itself).
+    /// TR: Telefonda seçilen, kayıt klasörünün alt klasörü ("" = kayıt klasörünün kendisi).
     var folder = ""
     var live: Int64 = 0
     var samples: [(Date, Int)] = []
@@ -40,6 +42,8 @@ final class IncomingTransfer {
     var doneBytes: Int64 { done.reduce(0) { $0 + Int64(chunkLength($1)) } }
 }
 
+/// What the UI shows for one transfer in progress, in either direction.
+/// TR: Arayüzün, süren tek bir aktarım için (iki yönde de) gösterdiği bilgiler.
 struct TransferSnapshot: Identifiable {
     enum Direction { case incoming, outgoing }
     let id: String
@@ -50,6 +54,8 @@ struct TransferSnapshot: Identifiable {
     let direction: Direction
 }
 
+/// A file on the Mac that is offered to the phone.
+/// TR: Mac'te duran ve telefona sunulan bir dosya.
 struct OutboxFile: Codable, Identifiable, Hashable {
     let id: String
     let path: String
@@ -57,7 +63,9 @@ struct OutboxFile: Codable, Identifiable, Hashable {
 }
 
 /// Protocol v2 endpoint logic. Thread-safe; UI reads it through `snapshot()`.
-final class Receiver: HTTPHandler {
+/// TR: Protokol v2 uç nokta mantığı. İş parçacığı güvenlidir; arayüz onu `snapshot()` ile okur.
+// Shared between the HTTP queues and the UI; every mutable field is guarded by `lock`.
+final class Receiver: HTTPHandler, @unchecked Sendable {
     static let frameSize = 1 << 20
 
     private let lock = NSRecursiveLock()
@@ -65,6 +73,7 @@ final class Receiver: HTTPHandler {
     private var transfers: [String: IncomingTransfer] = [:]
     private var downloads: [String: (name: String, size: Int64, sent: Int64, samples: [(Date, Int)], updated: Date)] = [:]
     private var outboxFiles: [OutboxFile] = []
+    private var sendRequested = false
     private var saveDirURL: URL
 
     var macName: () -> String = { "Mac" }
@@ -72,6 +81,7 @@ final class Receiver: HTTPHandler {
     var onDeviceSeen: ((String) -> Void)?
     var onDirectEnd: (() -> Void)?
     /// A phone received every byte of an outbox file.
+    /// TR: Bir telefon, giden kutusundaki bir dosyanın tamamını aldı.
     var onDownloaded: ((String) -> Void)?
 
     init(key: Data, saveDir: URL) {
@@ -84,6 +94,9 @@ final class Receiver: HTTPHandler {
     func setKey(_ k: Data) { lock.locked { key = SymmetricKey(data: k) } }
     func setSaveDir(_ u: URL) { lock.locked { saveDirURL = u } }
     func setOutbox(_ files: [OutboxFile]) { lock.locked { outboxFiles = files } }
+    /// "Send" was pressed: a phone that lists the outbox should download it without being asked.
+    /// TR: "Gönder"e basıldı: giden kutusunu listeleyen telefon, sorulmadan indirmelidir.
+    func setSendRequested(_ on: Bool) { lock.locked { sendRequested = on } }
 
     private var saveDir: URL { lock.locked { saveDirURL } }
     private var partialDir: URL {
@@ -113,8 +126,6 @@ final class Receiver: HTTPHandler {
             return (incoming + outgoing).sorted { $0.name < $1.name }
         }
     }
-
-    var isBusy: Bool { !snapshot().isEmpty }
 
     // MARK: HTTPHandler
 
@@ -227,6 +238,7 @@ final class Receiver: HTTPHandler {
     }
 
     /// Cleans a phone-supplied relative folder: no "..", no absolute paths, at most four levels.
+    /// TR: Telefondan gelen göreli klasör adını temizler: ".." yok, mutlak yol yok, en fazla dört düzey.
     static func safeFolder(_ raw: String) -> String {
         raw.replacingOccurrences(of: "\\", with: "/").split(separator: "/")
             .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ". ")) }
@@ -237,6 +249,7 @@ final class Receiver: HTTPHandler {
     }
 
     /// Subfolders of the download folder, newest first, so the phone can offer them.
+    /// TR: Telefon önerebilsin diye kayıt klasörünün alt klasörleri, en yeniden eskiye.
     private func folders(_ req: HTTPRequest) -> HTTPResponse {
         let keys: [URLResourceKey] = [.isDirectoryKey, .contentModificationDateKey]
         let items = (try? FileManager.default.contentsOfDirectory(at: saveDir, includingPropertiesForKeys: keys,
@@ -351,6 +364,7 @@ final class Receiver: HTTPHandler {
     }
 
     /// Deletes unfinished uploads older than a week.
+    /// TR: Bir haftadan eski, tamamlanmamış yüklemeleri siler.
     func cleanupPartials() {
         let fm = FileManager.default
         guard let items = try? fm.contentsOfDirectory(at: partialDir, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
@@ -370,7 +384,7 @@ final class Receiver: HTTPHandler {
             let mtime = Int64(((attrs[.modificationDate] as? Date) ?? Date()).timeIntervalSince1970 * 1000)
             return ["id": f.id, "name": f.name, "size": size, "mtime": mtime]
         }
-        return sealed(req, ["files": files])
+        return sealed(req, ["files": files, "send": lock.locked { sendRequested }])
     }
 
     private func download(_ req: HTTPRequest) -> HTTPResponse {

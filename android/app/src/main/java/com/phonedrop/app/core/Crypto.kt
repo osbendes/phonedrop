@@ -7,7 +7,11 @@ import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-/** AES-256-GCM boxes: nonce(12) || ciphertext || tag(16). See docs/PROTOCOL.md. */
+/**
+ * AES-256-GCM boxes: nonce(12) || ciphertext || tag(16). See docs/PROTOCOL.md.
+ *
+ * TR: AES-256-GCM kutuları: nonce(12) || şifreli metin || etiket(16). Bkz. docs/PROTOCOL.md.
+ */
 class Crypto(key: ByteArray) {
     private val spec = SecretKeySpec(key, "AES")
     private val random = SecureRandom()
@@ -27,7 +31,11 @@ class Crypto(key: ByteArray) {
         return out
     }
 
-    /** Throws [javax.crypto.AEADBadTagException] if the box was tampered with. */
+    /**
+     * Throws [javax.crypto.AEADBadTagException] if the box was tampered with.
+     *
+     * TR: Kutu kurcalanmışsa [javax.crypto.AEADBadTagException] fırlatır.
+     */
     fun open(box: ByteArray, aad: String, off: Int = 0, len: Int = box.size): ByteArray {
         require(len >= NONCE + TAG) { "box too short" }
         val c = Cipher.getInstance("AES/GCM/NoPadding")

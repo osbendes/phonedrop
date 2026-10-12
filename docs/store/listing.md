@@ -5,17 +5,17 @@
 **App name** (30 max): PhoneDrop: Android to Mac
 
 **Short description** (80 max):
-Send photos and videos from Android to your Mac over Wi-Fi. Fast, private, free.
+Send any file from Android to your Mac over Wi-Fi. Fast, private and free.
 
 **Full description:**
 
-PhoneDrop brings AirDrop-style sharing to Android and Mac. Pick your videos, tap Send, and they land in your Mac's Downloads folder. No cables, no cloud, no accounts.
+PhoneDrop brings AirDrop-style sharing to Android and Mac. Pick photos, videos, documents or any other files, tap Send, and they land in your Mac's Downloads folder. No cables, no cloud, no accounts.
 
-**Built for big videos**
+**Any file, any size**
 • Transfers run at full Wi-Fi speed with several connections in parallel.
 • If the connection drops, the transfer picks up where it left off.
 • It keeps going with the screen off, and progress shows in your notifications.
-• Original dates are kept, so your videos stay in order on your Mac.
+• Original dates are kept, so your files stay in order on your Mac.
 
 **Private by design**
 • Files go straight from your phone to your Mac on your own network. They never touch the internet.
@@ -38,17 +38,17 @@ Your phone and Mac need to be on the same Wi-Fi network. You can also connect yo
 **Uygulama adı:** PhoneDrop: Android'den Mac'e
 
 **Kısa açıklama:**
-Fotoğraf ve videoları Android'den Mac'e Wi-Fi ile gönder. Hızlı, gizli, bedava.
+Her tür dosyayı Android'den Mac'e Wi-Fi ile gönder. Hızlı, gizli, ücretsiz.
 
 **Tam açıklama:**
 
-PhoneDrop, AirDrop tarzı paylaşımı Android ve Mac'e getirir. Videolarını seç, Gönder'e dokun, Mac'indeki İndirilenler klasörüne gelsin. Kablo, bulut ya da hesap gerekmez.
+PhoneDrop, AirDrop tarzı paylaşımı Android ve Mac'e getirir. Fotoğraf, video, belge ya da başka dosyaları seç, Gönder'e dokun, Mac'indeki İndirilenler klasörüne gelsin. Kablo, bulut ya da hesap gerekmez.
 
-**Büyük videolar için tasarlandı**
+**Her tür ve her boyutta dosya**
 • Aktarım, birden fazla paralel bağlantıyla Wi-Fi'ın tam hızında yapılır.
 • Bağlantı koparsa aktarım kaldığı yerden devam eder.
 • Ekran kapalıyken de sürer, ilerlemeyi bildirimlerden takip edebilirsin.
-• Orijinal tarihler korunur, videoların Mac'te de doğru sırada kalır.
+• Orijinal tarihler korunur, dosyaların Mac'te de doğru sırada kalır.
 
 **Gizlilik öncelikli**
 • Dosyalar kendi ağın üzerinden doğrudan telefondan Mac'e gider, internete hiç çıkmaz.

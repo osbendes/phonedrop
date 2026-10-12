@@ -19,6 +19,7 @@ cp "$(swift build -c release --triple x86_64-apple-macosx13.0 --show-bin-path)/P
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 lipo -create "$ARM" "$X86" -output "$APP/Contents/MacOS/PhoneDrop"
 rm -f "$ARM" "$X86"
+strip -x "$APP/Contents/MacOS/PhoneDrop"  # local symbols are only useful for debugging
 cp Resources/Info.plist "$APP/Contents/"
 cp -R Resources/en.lproj Resources/tr.lproj "$APP/Contents/Resources/"
 

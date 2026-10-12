@@ -17,7 +17,7 @@ Sırayla ilerle. [x] olanlar tamamlandı.
 ## 0. GitHub'da yayın (tamamlandı, 12 Ekim 2026)
 - Depo: https://github.com/osbendes/phonedrop (herkese açık, MIT lisanslı)
 - İndirme sayfası: https://osbendes.github.io/phonedrop/
-- İlk sürüm: `v1.0.0-beta.1` (`PhoneDrop.dmg`, `PhoneDrop.apk`, `SHA256SUMS.txt`)
+- Sürümler: `v1.0.0-beta.1`, `v1.4` (`PhoneDrop.dmg`, `PhoneDrop.apk`, `SHA256SUMS.txt`)
 
 **Yeni sürüm yayınlamak için:** `mac/build.sh` ve `android/gradlew assembleRelease` ile derle, dosyaları `release/` klasörüne
 kopyala, sonra `gh release create vX.Y.Z release/PhoneDrop.dmg release/PhoneDrop.apk release/SHA256SUMS.txt` çalıştır.
@@ -65,6 +65,8 @@ Anahtar oluşturuldu: `~/Developer/PhoneDrop-signing/`. `./gradlew bundleRelease
 - **Mağaza kaydı:** `docs/store/listing.md` + görseller + en az 2 telefon ekran görüntüsü.
 
 ## Bilinen sınırlamalar
+- Mac'teki "Gönder", telefonu Bluetooth ile uyandırır. Telefondaki başka bir uygulama (ör. akıllı bileklik uygulaması) Bluetooth bağlantısı kurmaya çalışırken Android bütün taramaları duraklatır; bu durumda uyandırma gecikebilir ya da hiç gelmeyebilir. Çözüm: telefonda PhoneDrop'u açmak, indirme kendiliğinden başlar.
+- Mac'ten telefona aktarım tek bağlantı kullanır ve telefondan Mac'e aktarımdan yavaştır (testte yaklaşık 4 MB/s).
 - Mac uygulaması imzasız. Kullanıcılar ilk açılışta Sistem Ayarları › Gizlilik ve Güvenlik bölümünden **Yine de Aç** demek zorunda. İleride Apple Developer ID (yıllık 99 $) alınırsa bu adım ortadan kalkar.
 - Android 15 ve sonrasında arka plan aktarımı günde 6 saatle sınırlı. Normal kullanımda bu sınıra ulaşılmaz.
 - İmzasız Mac uygulamasının her yeni sürümü, macOS'ta İndirilenler klasörü (ve Bluetooth) iznini yeniden sorar. Apple Developer ID ile imzalanırsa bu tekrar etmez.

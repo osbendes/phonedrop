@@ -19,6 +19,7 @@ import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.util.Log
 import com.phonedrop.app.core.HttpStatusException
 import com.phonedrop.app.core.MacClient
 import com.phonedrop.app.core.UnauthorizedException
@@ -32,7 +33,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 
-/** Transfer list shared by the service and the UI. */
+/**
+ * Transfer list shared by the service and the UI.
+ *
+ * TR: Servis ile arayüzün paylaştığı aktarım listesi.
+ */
 object Transfers {
     enum class State { WAITING, ACTIVE, DONE, FAILED, CANCELLED }
     enum class Direction { UP, DOWN }
@@ -63,7 +68,11 @@ object Transfers {
     private val nextKey = AtomicInteger()
     val items = CopyOnWriteArrayList<Item>()
 
-    /** Connection problem shown to the user while something is pending (null = fine). */
+    /**
+     * Connection problem shown to the user while something is pending (null = fine).
+     *
+     * TR: Bekleyen bir iş varken kullanıcıya gösterilen bağlantı sorunu (null = sorun yok).
+     */
     @Volatile var linkStatus: String? = null
 
     fun active() = items.filter { it.state == State.WAITING || it.state == State.ACTIVE }
@@ -73,6 +82,14 @@ object Transfers {
 private class FatalException(msg: String) : Exception(msg)
 private class CancelledException : Exception()
 
+/**
+ * Foreground service that runs the queue: uploads to the Mac in parallel encrypted chunks and downloads
+ * from it, with retries, progress notifications and wake locks so it keeps going with the screen off.
+ *
+ * TR: Kuyruğu çalıştıran ön plan servisi: Mac'e paralel şifreli parçalarla yükler ve Mac'ten indirir;
+ * yeniden denemeler, ilerleme bildirimleri ve ekran kapalıyken de sürmesi için uyanık tutma kilitleri
+ * içerir.
+ */
 class TransferService : Service() {
 
     companion object {
@@ -85,8 +102,13 @@ class TransferService : Service() {
         private const val NOTIF_ID = 1
         private const val NOTIF_DONE_ID = 2
         private const val PARALLEL = 4
+        private const val TAG = "PhoneDrop"
 
-        /** Queues files for upload; read permission is handed to the service through ClipData. */
+        /**
+         * Queues files for upload; read permission is handed to the service through ClipData.
+         *
+         * TR: Dosyaları yükleme kuyruğuna ekler; okuma izni servise ClipData ile aktarılır.
+         */
         fun upload(ctx: Context, uris: List<Uri>) {
             if (uris.isEmpty()) return
             val clip = ClipData.newRawUri("files", uris[0])
@@ -112,7 +134,11 @@ class TransferService : Service() {
                 .putExtra("id", fileId).putExtra("name", name).putExtra("size", size))
         }
 
-        /** Downloads everything the Mac currently offers (used when the Mac presses "Send"). */
+        /**
+         * Downloads everything the Mac currently offers (used when the Mac presses "Send").
+         *
+         * TR: Mac'in o an sunduğu her şeyi indirir (Mac'te "Gönder"e basıldığında kullanılır).
+         */
         fun fetch(ctx: Context) {
             ctx.startForegroundService(Intent(ctx, TransferService::class.java).setAction(ACTION_FETCH))
         }
@@ -176,7 +202,7 @@ class TransferService : Service() {
                     }
                     n
                 }.getOrDefault(0)
-                android.util.Log.i("PhoneDrop", "wake: queued $queued download(s)")
+                Log.i(TAG, "wake: queued $queued download(s)")
                 if (queued > 0) startWorker() else if (worker == null) shutdown()
             }
             else -> if (worker == null) shutdown()
@@ -358,6 +384,7 @@ class TransferService : Service() {
                 put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/PhoneDrop")
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
+            Log.i(TAG, "download ${item.name}: creating the file")
             contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                 ?: throw FatalException(getString(R.string.err_disk))
         }.also { item.output = it }
@@ -366,7 +393,9 @@ class TransferService : Service() {
         retrying(item) { c ->
             val from = (item.sent.get() / MacClient.FRAME).toInt()
             item.resumed = from > 0
+            Log.i(TAG, "download ${item.name}: opening it, from frame $from")
             val pfd = contentResolver.openFileDescriptor(out, "rw") ?: throw FatalException(getString(R.string.err_disk))
+            Log.i(TAG, "download ${item.name}: requesting")
             ParcelFileDescriptor.AutoCloseOutputStream(pfd).use { stream ->
                 val ch = stream.channel
                 ch.position(from.toLong() * MacClient.FRAME)
@@ -380,11 +409,16 @@ class TransferService : Service() {
             if (item.sent.get() < item.size) throw IOException("incomplete download")
         }
         contentResolver.update(out, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+        Log.i(TAG, "download ${item.name}: done")
     }
 
     // ---------------- retries ----------------
 
-    /** Retries network errors forever with backoff; rediscovers the Mac if its address changed. */
+    /**
+     * Retries network errors forever with backoff; rediscovers the Mac if its address changed.
+     *
+     * TR: Ağ hatalarında artan beklemeyle süresiz yeniden dener; adresi değiştiyse Mac'i yeniden bulur.
+     */
     private fun <T> retrying(item: Transfers.Item, block: (MacClient) -> T): T {
         var delay = 1000L
         while (true) {

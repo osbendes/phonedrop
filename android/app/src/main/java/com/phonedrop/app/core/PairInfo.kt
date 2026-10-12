@@ -3,7 +3,11 @@ package com.phonedrop.app.core
 import java.net.URI
 import java.net.URLDecoder
 
-/** Contents of the Mac's pairing QR code: phonedrop://pair?v=2&k=..&h=..&p=..&n=.. */
+/**
+ * Contents of the Mac's pairing QR code: phonedrop://pair?v=2&k=..&h=..&p=..&n=..
+ *
+ * TR: Mac'in eşleştirme karekodunun içeriği: phonedrop://pair?v=2&k=..&h=..&p=..&n=..
+ */
 data class PairInfo(val key: ByteArray, val host: String, val port: Int, val name: String) {
     val kid get() = Crypto.kid(key)
 

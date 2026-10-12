@@ -7,8 +7,8 @@
     <key>CFBundleIdentifier</key><string>com.osbendes.phonedrop.mac</string>
     <key>CFBundleExecutable</key><string>PhoneDrop</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0.0</string>
-    <key>CFBundleVersion</key><string>2</string>
+    <key>CFBundleShortVersionString</key><string>1.4</string>
+    <key>CFBundleVersion</key><string>3</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleLocalizations</key><array><string>en</string><string>tr</string></array>
@@ -21,7 +21,7 @@
     <array>
         <!-- Named categories: macOS only lists an app under "Open With" for types it claims explicitly -->
         <dict>
-            <key>CFBundleTypeName</key><string>Photos, videos and documents</string>
+            <key>CFBundleTypeName</key><string>Common file types</string>
             <key>CFBundleTypeRole</key><string>Viewer</string>
             <key>LSHandlerRank</key><string>Alternate</string>
             <key>LSItemContentTypes</key>

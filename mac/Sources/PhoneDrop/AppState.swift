@@ -15,11 +15,16 @@ struct RecentFile: Identifiable, Codable {
     var name: String { (path as NSString).lastPathComponent }
 }
 
+/// Everything the UI shows, and the glue between the parts: settings, the HTTP server, the receiver, direct
+/// mode, notifications and keeping the Mac awake during transfers.
+/// TR: Arayüzün gösterdiği her şey ve parçaları birbirine bağlayan katman: ayarlar, HTTP sunucusu, alıcı,
+/// doğrudan mod, bildirimler ve aktarım sırasında Mac'i uyanık tutma.
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
     static let androidAppURL = URL(string: "https://osbendes.github.io/phonedrop/")!
     /// Direct APK link, used for the download QR code
+    /// TR: İndirme karekodu için doğrudan APK bağlantısı
     static let androidApkURL = "https://github.com/osbendes/phonedrop/releases/latest/download/PhoneDrop.apk"
     static var defaultSaveDir: URL {
         FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].appendingPathComponent("PhoneDrop")
@@ -33,11 +38,13 @@ final class AppState: ObservableObject {
     @Published var port: UInt16 = 0
     @Published var ip: String = "–"
     /// The pairing card shows the app-download QR instead of the pairing QR
+    /// TR: Eşleştirme kartı, eşleştirme karekodu yerine uygulama indirme karekodunu gösterir
     @Published var qrShowsApp = false
     @Published var recentDirs: [String] = UserDefaults.standard.stringArray(forKey: "recentDirs") ?? []
     @Published var dropTargeted = false
     @Published var directSSID: String?
     /// "Send" was pressed and the phone hasn't fetched everything yet
+    /// TR: "Gönder"e basıldı ve telefon henüz her şeyi indirmedi
     @Published var sending = false
     private var sendDeadline = Date.distantPast
     @Published var allowDirectOnWiFi = UserDefaults.standard.bool(forKey: "allowDirectOnWiFi") {
@@ -52,6 +59,7 @@ final class AppState: ObservableObject {
     private var timer: Timer?
     private var activity: NSObjectProtocol?
     private var idleSince: Date?
+    private var ticks = 0
     private let defaults = UserDefaults.standard
 
     init() {
@@ -119,6 +127,7 @@ final class AppState: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
+        timer?.tolerance = 0.2  // lets macOS batch the wake-ups while idle
     }
 
     // MARK: pairing
@@ -169,8 +178,12 @@ final class AppState: ObservableObject {
         if snap.map(\.received) != transfers.map(\.received) || snap.count != transfers.count {
             transfers = snap
         }
-        let newIP = Self.localIPv4() ?? "–"
-        if newIP != ip { ip = newIP }
+        // The address only matters for the pairing code; checking it every few seconds is plenty
+        ticks += 1
+        if ticks % 10 == 0 {
+            let newIP = Self.localIPv4() ?? "–"
+            if newIP != ip { ip = newIP }
+        }
         if sending {
             // Keep signalling while files are moving; give up two minutes after the last activity
             if snap.contains(where: { $0.direction == .outgoing }) { sendDeadline = Date().addingTimeInterval(120) }
@@ -193,6 +206,7 @@ final class AppState: ObservableObject {
     }
 
     /// Empties the "Received" list; the files themselves stay where they are.
+    /// TR: "Alınanlar" listesini boşaltır; dosyaların kendisi yerinde kalır.
     func clearRecent() {
         recent.removeAll()
         defaults.removeObject(forKey: "recent")
@@ -230,6 +244,7 @@ final class AppState: ObservableObject {
     }
 
     /// Switches where incoming files are saved and remembers the previous places.
+    /// TR: Gelen dosyaların kaydedileceği yeri değiştirir ve önceki yerleri hatırlar.
     func setSaveDir(_ u: URL) {
         guard u.path != saveDir.path else { return }
         recentDirs.removeAll { $0 == u.path || $0 == saveDir.path }
@@ -245,6 +260,7 @@ final class AppState: ObservableObject {
     }
 
     /// "~/Downloads/PhoneDrop" style path for display.
+    /// TR: Gösterim için "~/Downloads/PhoneDrop" biçiminde yol.
     static func displayPath(_ path: String) -> String {
         (path as NSString).abbreviatingWithTildeInPath
     }
@@ -269,15 +285,18 @@ final class AppState: ObservableObject {
     }
 
     /// Asks the phone to download the list now, by flagging it in the Bluetooth advertisement.
+    /// TR: Bluetooth yayınına işaret koyarak telefondan listeyi şimdi indirmesini ister.
     func sendOutbox() {
         guard !outbox.isEmpty else { return }
         sending = true
         sendDeadline = Date().addingTimeInterval(120)
+        receiver.setSendRequested(true)
         direct.setWaking(true)
     }
 
     private func stopSending() {
         sending = false
+        receiver.setSendRequested(false)
         direct.setWaking(false)
     }
 
@@ -321,6 +340,7 @@ final class AppState: ObservableObject {
     }
 
     /// The Mac's LAN IPv4, preferring Wi-Fi/Ethernet.
+    /// TR: Mac'in yerel ağdaki IPv4 adresi; Wi-Fi/Ethernet önceliklidir.
     static func localIPv4() -> String? {
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return nil }

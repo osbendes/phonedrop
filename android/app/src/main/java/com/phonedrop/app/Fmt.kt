@@ -3,6 +3,11 @@ package com.phonedrop.app
 import android.content.Context
 import android.text.format.Formatter
 
+/**
+ * File sizes and durations in the user's language.
+ *
+ * TR: Kullanıcının dilinde dosya boyutları ve süreler.
+ */
 object Fmt {
     fun bytes(ctx: Context, n: Long): String = Formatter.formatShortFileSize(ctx, n)
 
