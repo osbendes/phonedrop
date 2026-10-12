@@ -58,3 +58,14 @@ The Mac app is not notarized, so on first launch macOS blocks it. To open it:
 1. Open System Settings › Privacy & Security.
 2. Next to the message about PhoneDrop, click **Open Anyway**.
 3. When asked, allow incoming network connections.
+
+## License
+
+PhoneDrop is released under the [MIT License](LICENSE).
+
+Third-party components:
+
+- [ZXing](https://github.com/zxing/zxing) core (Apache License 2.0): draws the QR code in the Android app.
+- Google Play services code scanner (ML Kit): scans the pairing QR code on Android. It is covered by Google's terms.
+- [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) by Kazuhiko Arase (MIT): used only by the
+  browser-based prototype in `legacy/`.
