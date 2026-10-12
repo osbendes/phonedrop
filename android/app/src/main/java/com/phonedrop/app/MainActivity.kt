@@ -3,6 +3,7 @@ package com.phonedrop.app
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -52,6 +53,16 @@ class MainActivity : Activity() {
     @Volatile private var offlineReason = R.string.mac_offline
     private val finishedDownloads = HashSet<Int>()
 
+    /**
+     * Screenshot mode, set by [Diagnostics]: null = normal, false = looks unpaired, true = paired with a
+     * sample Mac. The real Mac isn't contacted while it is set.
+     *
+     * TR: Ekran görüntüsü modu, [Diagnostics] ayarlar: null = normal, false = eşleşmemiş görünür, true =
+     * örnek bir Mac ile eşleşmiş. Ayarlıyken gerçek Mac'e bağlanılmaz.
+     */
+    internal var demo: Boolean? = null
+    private val paired get() = demo ?: link.prefs.paired
+
     private class Row(val root: View, val name: TextView, val bar: ProgressBar, val status: TextView, val speed: TextView)
 
     private val tick = object : Runnable {
@@ -61,12 +72,18 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        applyOverrideConfiguration(Look.config(base))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         link = MacLink(this)
 
-        findViewById<Button>(R.id.pairBtn).setOnClickListener { if (link.prefs.paired) showMacMenu() else showPairDialog() }
+        findViewById<Button>(R.id.pairBtn).setOnClickListener { if (paired) showMacMenu() else showPairDialog() }
+        findViewById<View>(R.id.settingsBtn).setOnClickListener { showSettings() }
         findViewById<Button>(R.id.pickGallery).setOnClickListener { pickGallery() }
         findViewById<Button>(R.id.pickFiles).setOnClickListener { pickFiles() }
         findViewById<View>(R.id.outboxRefresh).setOnClickListener { refreshMac() }
@@ -129,9 +146,43 @@ class MainActivity : Activity() {
         handler.removeCallbacks(tick)
     }
 
+    // ---------------- settings ----------------
+
+    /**
+     * Language and theme. A change restarts the screen so everything is drawn again.
+     *
+     * TR: Dil ve tema. Değişiklik, her şey yeniden çizilsin diye ekranı baştan başlatır.
+     */
+    internal fun showSettings() {
+        val sp = getSharedPreferences(Look.PREFS, MODE_PRIVATE)
+        val system = getString(R.string.opt_system)
+        val langs = listOf("" to system, "en" to "English", "tr" to "Türkçe")
+        val themes = listOf("" to system, "light" to getString(R.string.opt_light), "dark" to getString(R.string.opt_dark))
+        val titles = listOf(getString(R.string.set_language), getString(R.string.set_theme))
+        fun current(key: String, list: List<Pair<String, String>>) = list.indexOfFirst { it.first == sp.getString(key, "") }.coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.settings)
+            .setItems(arrayOf("${titles[0]}: ${langs[current(Look.LANG, langs)].second}",
+                "${titles[1]}: ${themes[current(Look.THEME, themes)].second}")) { _, which ->
+                val key = if (which == 0) Look.LANG else Look.THEME
+                val list = if (which == 0) langs else themes
+                AlertDialog.Builder(this)
+                    .setTitle(titles[which])
+                    .setSingleChoiceItems(list.map { it.second }.toTypedArray(), current(key, list)) { d, i ->
+                        sp.edit().putString(key, list[i].first).apply()
+                        d.dismiss()
+                        recreate()
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     // ---------------- pairing ----------------
 
-    private fun showPairDialog() {
+    internal fun showPairDialog() {
         AlertDialog.Builder(this)
             .setTitle(R.string.pair_dialog_title)
             .setMessage(R.string.pair_dialog_msg)
@@ -146,7 +197,7 @@ class MainActivity : Activity() {
      *
      * TR: Mac uygulamasının indirme sayfası karekod olarak; paylaşma ve kopyalama seçenekleriyle.
      */
-    private fun showMacAppDialog() {
+    internal fun showMacAppDialog() {
         val d = resources.displayMetrics.density
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -198,7 +249,7 @@ class MainActivity : Activity() {
     // ---------------- destination folder ----------------
 
     private fun renderDest() {
-        val folder = link.prefs.folder
+        val folder = if (demo == null) link.prefs.folder else ""
         findViewById<TextView>(R.id.destFolder).text = folder.ifEmpty { getString(R.string.dest_default) }
     }
 
@@ -312,11 +363,11 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun renderMac() {
+    internal fun renderMac() {
         val name = findViewById<TextView>(R.id.macName)
         val status = findViewById<TextView>(R.id.macStatus)
         val btn = findViewById<Button>(R.id.pairBtn)
-        val paired = link.prefs.paired
+        if (demo != null) macOnline = true
         findViewById<View>(R.id.pickGallery).isEnabled = paired
         findViewById<View>(R.id.pickFiles).isEnabled = paired
         findViewById<View>(R.id.pickGallery).alpha = if (paired) 1f else 0.5f
@@ -328,7 +379,7 @@ class MainActivity : Activity() {
             btn.setText(R.string.btn_pair)
             return
         }
-        name.text = link.prefs.macName ?: "Mac"
+        name.text = if (demo == true) "MacBook" else link.prefs.macName ?: "Mac"
         btn.setText(R.string.btn_change)
         status.setText(when (macOnline) {
             true -> R.string.mac_connected
@@ -344,6 +395,7 @@ class MainActivity : Activity() {
      * TR: Mac'e ulaşılabildiğini kontrol eder ve "Telefona Gönder" dosyalarını listeler.
      */
     private fun refreshMac() {
+        if (demo != null) return
         if (!link.prefs.paired) { renderOutbox(null, null); return }
         thread {
             val result = runCatching { link.client().outbox() }
@@ -473,12 +525,12 @@ class MainActivity : Activity() {
 
     // ---------------- from the Mac ----------------
 
-    private fun renderOutbox(reachable: Boolean?, json: JSONObject?) {
+    internal fun renderOutbox(reachable: Boolean?, json: JSONObject?) {
         val box = findViewById<LinearLayout>(R.id.outbox)
         box.removeAllViews()
         val d = resources.displayMetrics.density
         fun note(res: Int) = box.addView(TextView(this).apply { setText(res); setTextColor(getColor(R.color.mute)); textSize = 14f })
-        if (!link.prefs.paired) { note(R.string.outbox_unpaired); return }
+        if (!paired) { note(R.string.outbox_unpaired); return }
         if (reachable != true || json == null) { note(R.string.outbox_offline); return }
         val files = json.getJSONArray("files")
         if (files.length() == 0) { note(R.string.outbox_empty); return }

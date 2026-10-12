@@ -51,6 +51,12 @@ android {
     androidResources {
         localeFilters += listOf("en", "tr")
     }
+    // The language can be chosen in the app, so a Play install must carry both languages
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
     packaging {
         resources {
             // Only kotlin-reflect reads these, and the app doesn't use it

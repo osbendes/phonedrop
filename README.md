@@ -7,6 +7,8 @@ file go straight from one device to the other over your own network: no cables, 
 
 **[Download](https://osbendes.github.io/phonedrop/)** · Mac app (macOS 13+) and Android app (Android 10+)
 
+![PhoneDrop on a Mac and an Android phone](docs/screenshots/hero-en.png)
+
 ## Features
 
 - **Any file, any size.** Transfers run over several connections in parallel at full Wi-Fi speed.
@@ -20,7 +22,19 @@ file go straight from one device to the other over your own network: no cables, 
   Open With. Press **Send** and the phone downloads them by itself.
 - **Works without a router.** If the two devices share no network, the phone finds the Mac over
   Bluetooth and connects to it directly. Files still travel over Wi-Fi.
-- English and Turkish.
+- **English and Turkish, light and dark.** Both follow the system, or pick them yourself in Settings.
+
+## Screenshots
+
+**Mac**
+
+![The Mac app: pairing, receiving, sending, light theme](docs/screenshots/mac-en.png)
+
+**Android**
+
+![The Android app: first launch, sending, receiving, settings, light theme](docs/screenshots/android-en.png)
+
+The pictures use sample content. They are made by `tools/screenshots.sh` and `tools/make_promo.swift`.
 
 ## How it's built
 
@@ -96,6 +110,8 @@ tür dosya, kendi ağın üzerinden bir cihazdan diğerine doğrudan gider: kabl
 
 **[İndir](https://osbendes.github.io/phonedrop/)** · Mac uygulaması (macOS 13+) ve Android uygulaması (Android 10+)
 
+![Mac'te ve Android telefonda PhoneDrop](docs/screenshots/hero-tr.png)
+
 ### Özellikler
 
 - **Her tür ve her boyutta dosya.** Aktarım, birden fazla paralel bağlantıyla Wi-Fi'ın tam hızında yapılır.
@@ -109,7 +125,19 @@ tür dosya, kendi ağın üzerinden bir cihazdan diğerine doğrudan gider: kabl
   Birlikte Aç'ı kullan. **Gönder**'e bastığında telefon dosyaları kendiliğinden indirir.
 - **Modem olmadan da çalışır.** İki cihazın ortak bir ağı yoksa telefon Mac'i Bluetooth ile bulur ve
   ona doğrudan bağlanır. Dosyalar yine Wi-Fi üzerinden gider.
-- Türkçe ve İngilizce.
+- **Türkçe ve İngilizce, açık ve koyu tema.** İkisi de sistemi izler; istersen Ayarlar'dan kendin seçersin.
+
+### Ekran görüntüleri
+
+**Mac**
+
+![Mac uygulaması: eşleştirme, alma, gönderme, açık tema](docs/screenshots/mac-tr.png)
+
+**Android**
+
+![Android uygulaması: ilk açılış, gönderme, alma, ayarlar, açık tema](docs/screenshots/android-tr.png)
+
+Görsellerde örnek içerik kullanılır. `tools/screenshots.sh` ve `tools/make_promo.swift` ile üretilirler.
 
 ### Yapısı
 

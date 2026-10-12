@@ -118,4 +118,11 @@
     <string name="toast_copied">Link copied</string>
     <string name="notif_mac_has_files">Your Mac has files for you</string>
     <string name="notif_tap_to_download">Tap to open PhoneDrop and download them.</string>
+
+    <string name="settings">Settings</string>
+    <string name="set_language">Language</string>
+    <string name="set_theme">Theme</string>
+    <string name="opt_system">System</string>
+    <string name="opt_light">Light</string>
+    <string name="opt_dark">Dark</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.phonedrop.app
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -12,6 +13,11 @@ import android.widget.Toast
  * TR: Paylaş menüsü hedefi: dosyaları arka plan servisine verir ve hemen kapanır.
  */
 class ShareActivity : Activity() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        applyOverrideConfiguration(Look.config(base))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val uris = extractUris(intent)

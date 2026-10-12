@@ -45,3 +45,8 @@
 "Send" = "Gönder";
 "Waiting for Phone…" = "Telefon Bekleniyor…";
 "Your phone downloads these by itself if Bluetooth is on. If nothing happens, open PhoneDrop on the phone." = "Telefonda Bluetooth açıksa dosyalar kendiliğinden iner. Bir şey olmazsa telefonda PhoneDrop'u aç.";
+"Language" = "Dil";
+"Appearance" = "Görünüm";
+"System" = "Sistem";
+"Light" = "Açık";
+"Dark" = "Koyu";

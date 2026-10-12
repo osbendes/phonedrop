@@ -5,7 +5,42 @@ import Network
 import ServiceManagement
 import UserNotifications
 
-func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }
+/// The language of the app's own texts: Turkish or English, chosen in the settings menu or taken from macOS.
+/// TR: Uygulamanın kendi metinlerinin dili: Türkçe ya da İngilizce; ayarlar menüsünden seçilir ya da
+/// macOS'ten alınır.
+enum Lang {
+    private(set) static var code = "en"
+    private static var bundle = Bundle.main
+
+    /// "system" follows macOS: Turkish if that is its first language, English for every other language.
+    /// TR: "system" macOS'i izler: ilk dili Türkçe ise Türkçe, diğer bütün dillerde İngilizce.
+    static func use(_ setting: String) {
+        if setting == "en" || setting == "tr" {
+            code = setting
+        } else {
+            // The global domain, because the app's own AppleLanguages holds our override
+            let system = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)?["AppleLanguages"] as? [String]
+            code = system?.first?.hasPrefix("tr") == true ? "tr" : "en"
+        }
+        bundle = Bundle.main.path(forResource: code, ofType: "lproj").flatMap { Bundle(path: $0) } ?? .main
+    }
+
+    static func string(_ key: String) -> String { bundle.localizedString(forKey: key, value: key, table: nil) }
+}
+
+func L(_ key: String) -> String { Lang.string(key) }
+
+/// Screenshot mode: `--demo` shows sample content and touches neither the network nor the saved settings.
+/// TR: Ekran görüntüsü modu: `--demo` örnek içerik gösterir; ağa da kayıtlı ayarlara da dokunmaz.
+enum Demo {
+    static let on = CommandLine.arguments.contains("--demo")
+
+    static func arg(_ name: String) -> String? {
+        let a = CommandLine.arguments
+        guard let i = a.firstIndex(of: name), i + 1 < a.count else { return nil }
+        return a[i + 1]
+    }
+}
 
 struct RecentFile: Identifiable, Codable {
     var id: String { path + "\(time)" }
@@ -51,6 +86,16 @@ final class AppState: ObservableObject {
         didSet { defaults.set(allowDirectOnWiFi, forKey: "allowDirectOnWiFi") }
     }
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
+    /// "system", "en" or "tr"
+    /// TR: "system", "en" ya da "tr"
+    @Published var language = Demo.arg("--lang") ?? UserDefaults.standard.string(forKey: "language") ?? "system" {
+        didSet { applyLanguage() }
+    }
+    /// "system", "light" or "dark"
+    /// TR: "system", "light" ya da "dark"
+    @Published var theme = Demo.arg("--theme") ?? UserDefaults.standard.string(forKey: "theme") ?? "system" {
+        didSet { applyTheme() }
+    }
 
     private var key: Data
     private let server = HTTPServer()
@@ -66,8 +111,15 @@ final class AppState: ObservableObject {
         let dir = defaults.string(forKey: "saveDir").map { URL(fileURLWithPath: $0) }
             ?? Self.defaultSaveDir
         saveDir = dir
-        key = KeyStore.load()
+        // The pairing code in a screenshot must not be the real one
+        key = Demo.on ? Data((0..<32).map { _ in UInt8.random(in: 0...255) }) : KeyStore.load()
         receiver = Receiver(key: key, saveDir: dir)
+        applyLanguage()
+        applyTheme()
+        if Demo.on {
+            showDemo(Demo.arg("--scene") ?? "pair")
+            return
+        }
         devices = defaults.stringArray(forKey: "devices") ?? []
         if let data = defaults.data(forKey: "outbox"), let list = try? JSONDecoder().decode([OutboxFile].self, from: data) {
             outbox = list
@@ -76,7 +128,7 @@ final class AppState: ObservableObject {
             recent = list
         }
         receiver.setOutbox(outbox)
-        receiver.macName = { Host.current().localizedName ?? "Mac" }
+        receiver.macName = { AppState.macName }
         receiver.onReceived = { [weak self] url, size in
             Task { @MainActor in self?.received(url, size: size) }
         }
@@ -130,13 +182,54 @@ final class AppState: ObservableObject {
         timer?.tolerance = 0.2  // lets macOS batch the wake-ups while idle
     }
 
+    // MARK: language, appearance
+
+    private func applyLanguage() {
+        Lang.use(language)
+        guard !Demo.on else { return }
+        defaults.set(language, forKey: "language")
+        // macOS's own texts (file panels, standard buttons) follow this from the next launch
+        defaults.set([Lang.code], forKey: "AppleLanguages")
+    }
+
+    private func applyTheme() {
+        NSApplication.shared.appearance = theme == "light" ? NSAppearance(named: .aqua)
+            : theme == "dark" ? NSAppearance(named: .darkAqua) : nil
+        if !Demo.on { defaults.set(theme, forKey: "theme") }
+    }
+
+    /// Sample content for screenshots. Scenes: "pair", "ready", "transfer", "send".
+    /// TR: Ekran görüntüleri için örnek içerik. Sahneler: "pair", "ready", "transfer", "send".
+    private func showDemo(_ scene: String) {
+        port = 8765
+        ip = "192.168.1.20"
+        guard scene != "pair" else { return }
+        devices = ["Xiaomi"]
+        let dir = Self.defaultSaveDir.path
+        let files: [(String, Int64)] = [("VID_20261011_201144.mp4", 1_920_000_000), ("IMG_20261011_184512.jpg", 4_800_000),
+                                        ("IMG_20261011_184467.jpg", 5_100_000), ("Portfolio.pdf", 12_400_000)]
+        recent = files.map { RecentFile(path: "\(dir)/\($0.0)", size: $0.1, time: Date()) }
+        if scene == "transfer" {
+            transfers = [TransferSnapshot(id: "1", name: "VID_20261012_143501.mp4", size: 3_800_000_000,
+                                          received: 1_420_000_000, speed: 21_400_000, direction: .incoming)]
+        }
+        if scene == "send" {
+            outbox = ["Mix-Final.wav", "Contract.pdf", "Trailer-4K.mov"].map { OutboxFile(id: $0, path: "/tmp/\($0)") }
+            sending = true
+            transfers = [TransferSnapshot(id: "2", name: "Trailer-4K.mov", size: 2_100_000_000,
+                                          received: 840_000_000, speed: 18_200_000, direction: .outgoing)]
+        }
+    }
+
     // MARK: pairing
+
+    static var macName: String { Demo.on ? "MacBook" : Host.current().localizedName ?? "Mac" }
 
     var kid: String { PDCrypto.kid(key) }
 
     private func service() -> NWListener.Service {
         let txt = NWTXTRecord(["kid": kid, "v": "2"])
-        return NWListener.Service(name: "PhoneDrop – \(Host.current().localizedName ?? "Mac")", type: "_phonedrop._tcp",
+        return NWListener.Service(name: "PhoneDrop – \(Self.macName)", type: "_phonedrop._tcp",
                                   domain: nil, txtRecord: txt)
     }
 
@@ -149,7 +242,7 @@ final class AppState: ObservableObject {
             .init(name: "k", value: key.base64url()),
             .init(name: "h", value: ip),
             .init(name: "p", value: String(port)),
-            .init(name: "n", value: Host.current().localizedName ?? "Mac"),
+            .init(name: "n", value: Self.macName),
         ]
         return c.string ?? ""
     }
@@ -370,8 +463,9 @@ enum Fmt {
     static func eta(_ seconds: Double) -> String {
         guard seconds.isFinite, seconds > 0 else { return "" }
         let f = DateComponentsFormatter()
+        f.calendar?.locale = Locale(identifier: Lang.code)
         f.allowedUnits = seconds >= 3600 ? [.hour, .minute] : [.minute, .second]
-        f.unitsStyle = .abbreviated
+        f.unitsStyle = .brief
         return f.string(from: seconds) ?? ""
     }
 }

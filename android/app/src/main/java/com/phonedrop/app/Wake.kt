@@ -81,12 +81,13 @@ class WakeReceiver : BroadcastReceiver() {
                     // Android refused a background start: ask the user to open the app instead
                     Log.w("PhoneDrop", "wake: can't start the service: $e")
                     val nm = ctx.getSystemService(NotificationManager::class.java)
-                    nm.createNotificationChannel(NotificationChannel("done", ctx.getString(R.string.notif_channel_done),
+                    val texts = Look.wrap(ctx)
+                    nm.createNotificationChannel(NotificationChannel("done", texts.getString(R.string.notif_channel_done),
                         NotificationManager.IMPORTANCE_DEFAULT))
                     nm.notify(3, Notification.Builder(ctx, "done")
                         .setSmallIcon(R.drawable.ic_stat_upload)
-                        .setContentTitle(ctx.getString(R.string.notif_mac_has_files))
-                        .setContentText(ctx.getString(R.string.notif_tap_to_download))
+                        .setContentTitle(texts.getString(R.string.notif_mac_has_files))
+                        .setContentText(texts.getString(R.string.notif_tap_to_download))
                         .setAutoCancel(true)
                         .setContentIntent(PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java),
                             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))

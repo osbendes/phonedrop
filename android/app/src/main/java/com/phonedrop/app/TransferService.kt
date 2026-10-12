@@ -155,6 +155,8 @@ class TransferService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
 
+    override fun attachBaseContext(base: Context) = super.attachBaseContext(Look.wrap(base))
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {

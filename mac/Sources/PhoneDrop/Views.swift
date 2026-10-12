@@ -14,7 +14,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Finder's right-click > Services > "Send with PhoneDrop" (declared in Info.plist)
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
-        if !CommandLine.arguments.contains("--snapshot") { showWindow() }
+        showWindow()
+        // Screenshot aid: `--demo --snapshot out.png [--pair|--pair-app]` saves the window as a PNG and quits
+        if let out = Demo.arg("--snapshot") {
+            let args = CommandLine.arguments
+            let pair = args.contains("--pair") || args.contains("--pair-app")
+            if pair { PairWindow.show(appQR: args.contains("--pair-app")) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                // The frame view, so the title bar is in the picture
+                if let view = (pair ? PairWindow.window : self.window)?.contentView?.superview,
+                   let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                    view.cacheDisplay(in: view.bounds, to: rep)
+                    try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: out))
+                }
+                exit(0)
+            }
+        }
         // Test aid: `open PhoneDrop.app --args --send` presses Send right after launch
         if CommandLine.arguments.contains("--send") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { AppState.shared.sendOutbox() }
@@ -71,26 +86,6 @@ struct PhoneDropApp: App {
 
     init() {
         _ = AppState.shared
-        // Debug aid: `PhoneDrop --snapshot out.png` renders the menu window to a PNG and exits.
-        if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
-            let out = CommandLine.arguments[i + 1]
-            let state = AppState.shared
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                // `--pair` / `--pair-app` render the pairing window instead of the main view
-                let args = CommandLine.arguments
-                state.qrShowsApp = args.contains("--pair-app")
-                let content = args.contains("--pair") || args.contains("--pair-app")
-                    ? AnyView(PairSheet()) : AnyView(MenuContent())
-                let renderer = ImageRenderer(content: content.environmentObject(state)
-                    .background(Color(nsColor: .windowBackgroundColor)))
-                renderer.scale = 2
-                if let img = renderer.nsImage, let tiff = img.tiffRepresentation,
-                   let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-                    try? png.write(to: URL(fileURLWithPath: out))
-                }
-                exit(0)
-            }
-        }
     }
 
     var body: some Scene {
@@ -136,7 +131,7 @@ struct MenuContent: View {
                     ForEach(state.recent.prefix(5)) { f in
                         Button { state.reveal(f.path) } label: {
                             HStack {
-                                Image(nsImage: NSWorkspace.shared.icon(forFile: f.path)).resizable().frame(width: 18, height: 18)
+                                Image(nsImage: NSWorkspace.shared.icon(for: UTType(filenameExtension: (f.name as NSString).pathExtension) ?? .data)).resizable().frame(width: 18, height: 18)
                                 Text(verbatim: f.name).lineLimit(1).truncationMode(.middle)
                                 Spacer()
                                 Text(verbatim: Fmt.bytes(f.size)).foregroundStyle(.secondary).font(.caption).monospacedDigit()
@@ -164,6 +159,19 @@ struct MenuContent: View {
                 Button(L("Change Download Folder…")) { state.chooseSaveDir() }
                 Toggle(L("Allow Direct Connection on Wi-Fi"), isOn: $state.allowDirectOnWiFi)
                 Toggle(L("Open at Login"), isOn: Binding(get: { state.launchAtLogin }, set: { state.setLaunchAtLogin($0) }))
+                Divider()
+                Picker(L("Language"), selection: $state.language) {
+                    Text(verbatim: L("System")).tag("system")
+                    Text(verbatim: "English").tag("en")
+                    Text(verbatim: "Türkçe").tag("tr")
+                }
+                .pickerStyle(.menu)
+                Picker(L("Appearance"), selection: $state.theme) {
+                    Text(verbatim: L("System")).tag("system")
+                    Text(verbatim: L("Light")).tag("light")
+                    Text(verbatim: L("Dark")).tag("dark")
+                }
+                .pickerStyle(.menu)
                 Divider()
                 Button(L("Reset Pairing…")) { confirmReset() }
                 Divider()
@@ -257,7 +265,7 @@ struct SaveLocationRow: View {
 /// gibi kalır.
 @MainActor
 enum PairWindow {
-    private static var window: NSWindow?
+    private(set) static var window: NSWindow?
 
     static func show(appQR: Bool) {
         AppState.shared.qrShowsApp = appQR
@@ -270,6 +278,7 @@ enum PairWindow {
             w.center()
             window = w
         }
+        window?.title = L("Pair a Phone")
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }

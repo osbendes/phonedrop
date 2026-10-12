@@ -7,6 +7,8 @@ import android.util.Log
 import android.widget.Toast
 import com.phonedrop.app.core.MacClient
 import java.io.File
+import org.json.JSONArray
+import org.json.JSONObject
 import java.security.SecureRandom
 import kotlin.concurrent.thread
 
@@ -27,6 +29,18 @@ object Diagnostics {
         val adbOn = Settings.Global.getInt(activity.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1
         if (!adbOn || !prefs.paired) return
         when (action.removePrefix(PREFIX)) {
+            // Screenshots: sets language/theme (extras: lang, theme; "" = system) and restarts the screen
+            "LOOK" -> {
+                val sp = activity.getSharedPreferences(Look.PREFS, 0)
+                val lang = intent.getStringExtra("lang") ?: ""
+                val theme = intent.getStringExtra("theme") ?: ""
+                if (lang != sp.getString(Look.LANG, "") || theme != sp.getString(Look.THEME, "")) {
+                    sp.edit().putString(Look.LANG, lang).putString(Look.THEME, theme).apply()
+                    activity.recreate()
+                }
+            }
+            // Screenshots: sample content instead of the real Mac (extras: scene, dialog); scene "off" ends it
+            "DEMO" -> demo(activity, intent.getStringExtra("scene") ?: "off", intent.getStringExtra("dialog"))
             // Opens the QR scanner, to check it starts
             "SCAN" -> activity.scan()
             // Finds the Mac over Bluetooth and reads its id; touches no network
@@ -57,6 +71,37 @@ object Diagnostics {
                 report(activity, result)
             }
         }
+    }
+
+    private fun demo(activity: MainActivity, scene: String, dialog: String?) {
+        fun item(dir: Transfers.Direction, name: String, size: Long, sent: Long, state: Transfers.State, speed: Double = 0.0) =
+            Transfers.Item(dir, name, size).also { it.state = state; it.sent.set(sent); it.speed = speed }
+        val up = Transfers.Direction.UP
+        val wasOn = activity.demo != null
+        Transfers.items.clear()
+        activity.demo = when (scene) { "off" -> null; "unpaired" -> false; else -> true }
+        val files = JSONArray()
+        when (scene) {
+            "sending" -> Transfers.items += listOf(
+                item(up, "IMG_20261011_184467.jpg", 5_100_000, 0, Transfers.State.WAITING),
+                item(up, "VID_20261012_143501.mp4", 3_800_000_000, 1_420_000_000, Transfers.State.ACTIVE, 21_400_000.0),
+                item(up, "IMG_20261011_184512.jpg", 4_800_000, 4_800_000, Transfers.State.DONE))
+            "receiving" -> {
+                Transfers.items += item(Transfers.Direction.DOWN, "Trailer-4K.mov", 2_100_000_000, 840_000_000,
+                    Transfers.State.ACTIVE, 18_200_000.0)
+                for ((n, s) in listOf("Mix-Final.wav" to 86_000_000L, "Contract.pdf" to 1_200_000L)) {
+                    files.put(JSONObject().put("id", n).put("name", n).put("size", s))
+                }
+            }
+        }
+        activity.renderMac()
+        activity.renderOutbox(activity.demo, JSONObject().put("files", files))
+        when (dialog) {
+            "pair" -> activity.showPairDialog()
+            "settings" -> activity.showSettings()
+            "macapp" -> activity.showMacAppDialog()
+        }
+        if (scene == "off" && wasOn) activity.recreate()
     }
 
     private fun report(activity: MainActivity, text: String) {
