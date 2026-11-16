@@ -3,7 +3,8 @@
 # ("MacBook" / "Xiaomi", made-up files) in both languages and both themes.
 #   tools/screenshots.sh <out-dir> [mac] [phone]
 # Mac: needs mac/dist/PhoneDrop.app (run mac/build.sh). Nothing is read from or written to your settings.
-# Phone: needs the app installed and paired, USB debugging on, and the phone unlocked. The language and
+# Phone: needs a build made with `./gradlew assembleRelease -Pdiag=true` installed and paired, USB debugging
+# on, and the phone unlocked. The language and
 # theme settings are put back to "System" at the end.
 #
 # TR: README ve tanıtım görsellerinde kullanılan ham ekran görüntülerini, örnek içerikle ("MacBook" /

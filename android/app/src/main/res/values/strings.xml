@@ -127,4 +127,22 @@
     <string name="opt_dark">Dark</string>
     <string name="hero_title">Choose files to send</string>
     <string name="hero_text">Photos, videos or any other file, at any size.</string>
+
+    <string name="web_title">Use a browser</string>
+    <string name="web_text">Nothing to install on the computer: Windows, Mac or Linux.</string>
+    <string name="web_start">Start</string>
+    <string name="web_stop">Turn off</string>
+    <string name="web_step1">1. On the computer, open this address in a browser:</string>
+    <string name="web_step2">2. Scan the code that the page shows:</string>
+    <string name="web_waiting">Waiting for the code to be scanned</string>
+    <string name="web_linked">Connected to the browser. Choose files above to send them.</string>
+    <string name="web_no_network">Connect to Wi-Fi or turn on the hotspot</string>
+    <string name="web_notif_title">Browser transfer is on</string>
+    <string name="web_toast_connecting">Connecting to the browser…</string>
+    <string name="web_toast_start_first">Tap “Start” on the “Use a browser” card first, then scan again.</string>
+    <string name="web_toast_offered">Ready to download in the browser</string>
+    <string name="st_web_ready">Ready in the browser · %1$s</string>
+    <string name="about">About &amp; licenses</string>
+    <string name="about_source">Source code</string>
+    <string name="about_text">Free and open source, under the MIT License. © 2026 osbendes.\n\nNo accounts, no servers, no ads, no tracking: files go straight between your devices, encrypted.\n\nIncludes ZXing (Apache License 2.0) for drawing QR codes, and uses Google Play services (ML Kit) for scanning them, under Google\'s terms.\n\nPhoneDrop is not affiliated with Apple, Google or Microsoft; their product names are their trademarks.</string>
 </resources>

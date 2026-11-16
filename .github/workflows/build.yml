@@ -1,0 +1,53 @@
+# Builds and tests every push. Nothing here publishes anything.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The page's own X25519 / SHA-256 / HKDF / ChaCha20-Poly1305 against Node's
+      - run: node web/test.js web/index.html "$RUNNER_TEMP/qr.txt"
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      # Unit tests (protocol, web host, crypto), lint, and a release build signed with the debug key
+      - run: ./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-unsigned-test-build
+          path: android/app/build/outputs/apk/release/*.apk
+
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./build.sh
+        working-directory: mac
+      # The QR code drawn by the page, read back by macOS's own decoder
+      - run: |
+          node web/test.js web/index.html "$RUNNER_TEMP/qr.txt"
+          swift tools/check_qr.swift "$RUNNER_TEMP/qr.txt" | grep "decodes correctly"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-adhoc-test-build
+          path: mac/dist/PhoneDrop.dmg

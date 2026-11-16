@@ -68,6 +68,7 @@ class MainActivity : Activity() {
     private val tick = object : Runnable {
         override fun run() {
             renderTransfers()
+            renderWeb()
             handler.postDelayed(this, 500)
         }
     }
@@ -84,6 +85,8 @@ class MainActivity : Activity() {
 
         findViewById<Button>(R.id.pairBtn).setOnClickListener { if (paired) showMacMenu() else showPairDialog() }
         findViewById<View>(R.id.settingsBtn).setOnClickListener { showSettings() }
+        findViewById<View>(R.id.webBtn).setOnClickListener { if (WebShare.running) WebShare.stop(this) else WebShare.start(this) }
+        findViewById<View>(R.id.webScan).setOnClickListener { scan() }
         findViewById<Button>(R.id.pickGallery).setOnClickListener { pickGallery() }
         findViewById<Button>(R.id.pickFiles).setOnClickListener { pickFiles() }
         findViewById<View>(R.id.outboxRefresh).setOnClickListener { refreshMac() }
@@ -102,15 +105,15 @@ class MainActivity : Activity() {
         }
         // Not after a restart of the screen (rotation, new theme): the code was handled the first time
         if (savedInstanceState == null) {
-            intent?.data?.let { pairWith(it.toString()) }
-            Diagnostics.run(this, intent, link.prefs)
+            intent?.data?.let { handleCode(it.toString()) }
+            if (BuildConfig.DIAG) Diagnostics.run(this, intent, link.prefs)
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent.data?.let { pairWith(it.toString()) }
-        Diagnostics.run(this, intent, link.prefs)
+        intent.data?.let { handleCode(it.toString()) }
+        if (BuildConfig.DIAG) Diagnostics.run(this, intent, link.prefs)
     }
 
     override fun onResume() {
@@ -166,7 +169,18 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
             .setItems(arrayOf("${titles[0]}: ${langs[current(Look.LANG, langs)].second}",
-                "${titles[1]}: ${themes[current(Look.THEME, themes)].second}")) { _, which ->
+                "${titles[1]}: ${themes[current(Look.THEME, themes)].second}", getString(R.string.about))) { _, which ->
+                if (which == 2) {
+                    AlertDialog.Builder(this)
+                        .setTitle("PhoneDrop ${BuildConfig.VERSION_NAME}")
+                        .setMessage(R.string.about_text)
+                        .setPositiveButton(R.string.about_source) { _, _ ->
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/osbendes/phonedrop")))
+                        }
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
+                    return@setItems
+                }
                 val key = if (which == 0) Look.LANG else Look.THEME
                 val list = if (which == 0) langs else themes
                 AlertDialog.Builder(this)
@@ -338,8 +352,59 @@ class MainActivity : Activity() {
     fun scan() {
         val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
         GmsBarcodeScanning.getClient(this, options).startScan()
-            .addOnSuccessListener { code -> code.rawValue?.let { pairWith(it) } }
+            .addOnSuccessListener { code -> code.rawValue?.let { handleCode(it) } }
             .addOnFailureListener { Toast.makeText(this, R.string.toast_scanner_unavailable, Toast.LENGTH_LONG).show() }
+    }
+
+    /**
+     * A scanned or opened PhoneDrop link: a Mac's pairing code or a browser page's session code.
+     *
+     * TR: Okutulan ya da açılan PhoneDrop bağlantısı: bir Mac'in eşleştirme kodu ya da bir tarayıcı
+     * sayfasının oturum kodu.
+     */
+    private fun handleCode(text: String) {
+        if (text.startsWith("phonedrop://web")) connectBrowser(text) else pairWith(text)
+    }
+
+    internal fun connectBrowser(text: String) {
+        val key = runCatching { com.phonedrop.app.core.Crypto.unb64url(Uri.parse(text).getQueryParameter("k") ?: "") }.getOrNull()
+        val ok = key != null && WebShare.host?.connect(key) == true
+        Toast.makeText(this, when {
+            ok -> R.string.web_toast_connecting
+            !WebShare.running -> R.string.web_toast_start_first
+            else -> R.string.toast_bad_qr
+        }, Toast.LENGTH_LONG).show()
+        renderWeb()
+    }
+
+    // ---------------- browser mode ----------------
+
+    /**
+     * The "Use a browser" card, and whether the pick buttons have somewhere to send to.
+     *
+     * TR: "Tarayıcıyla aktar" kartı ve dosya seçme butonlarının gönderecek bir yeri olup olmadığı.
+     */
+    internal fun renderWeb() {
+        val running = WebShare.running
+        findViewById<Button>(R.id.webBtn).setText(if (running) R.string.web_stop else R.string.web_start)
+        findViewById<View>(R.id.webOn).visibility = if (running) View.VISIBLE else View.GONE
+        if (running) {
+            val addresses = WebShare.addresses()
+            findViewById<TextView>(R.id.webAddress).text = addresses.firstOrNull() ?: getString(R.string.web_no_network)
+            val status = findViewById<TextView>(R.id.webStatus)
+            val state = WebShare.host?.state
+            status.setText(when (state) {
+                com.phonedrop.app.core.WebHost.State.LINKED -> R.string.web_linked
+                com.phonedrop.app.core.WebHost.State.SCANNED -> R.string.web_toast_connecting
+                else -> R.string.web_waiting
+            })
+            status.setTextColor(getColor(if (WebShare.linked) R.color.on_ok else R.color.mute))
+        }
+        val canSend = paired || WebShare.linked
+        for (id in intArrayOf(R.id.pickGallery, R.id.pickFiles)) {
+            findViewById<View>(id).isEnabled = canSend
+            findViewById<View>(id).alpha = if (canSend) 1f else 0.5f
+        }
     }
 
     private fun pairWith(text: String) {
@@ -373,10 +438,7 @@ class MainActivity : Activity() {
         if (demo != null) macOnline = true
         // Unpaired, the card needs the room for its two lines of text
         findViewById<View>(R.id.macIcon).visibility = if (paired) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.pickGallery).isEnabled = paired
-        findViewById<View>(R.id.pickFiles).isEnabled = paired
-        findViewById<View>(R.id.pickGallery).alpha = if (paired) 1f else 0.5f
-        findViewById<View>(R.id.pickFiles).alpha = if (paired) 1f else 0.5f
+        renderWeb()
         if (!paired) {
             name.setText(R.string.mac_not_paired)
             status.setText(R.string.mac_not_paired_hint)
@@ -462,7 +524,8 @@ class MainActivity : Activity() {
         val uris = ArrayList<Uri>()
         data.clipData?.let { c -> for (k in 0 until c.itemCount) uris.add(c.getItemAt(k).uri) }
         if (uris.isEmpty()) data.data?.let { uris.add(it) }
-        TransferService.upload(this, uris)
+        // With a browser connected, the files are for it; otherwise they go to the paired Mac
+        if (WebShare.linked) WebShare.offer(this, uris) else TransferService.upload(this, uris)
     }
 
     // ---------------- transfer list ----------------
@@ -499,7 +562,7 @@ class MainActivity : Activity() {
             })
             val size = Fmt.bytes(this, it.size)
             row.status.text = when (it.state) {
-                Transfers.State.WAITING -> getString(R.string.st_waiting, size)
+                Transfers.State.WAITING -> getString(if (it.web) R.string.st_web_ready else R.string.st_waiting, size)
                 Transfers.State.ACTIVE -> getString(R.string.st_active, Fmt.bytes(this, it.sent.get()), size) +
                     (if (it.resumed) getString(R.string.st_resumed) else "")
                 Transfers.State.DONE -> getString(

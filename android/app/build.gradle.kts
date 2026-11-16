@@ -23,8 +23,10 @@ android {
         applicationId = "com.osbendes.phonedrop"
         minSdk = 29
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.4"
+        versionCode = 4
+        versionName = "1.5"
+        // Test and screenshot hooks (Diagnostics.kt) are compiled in only with -Pdiag=true
+        buildConfigField("boolean", "DIAG", (project.findProperty("diag") == "true").toString())
     }
 
     signingConfigs {
@@ -38,6 +40,11 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+    // The browser page is shared with the other platforms' apps
+    sourceSets.getByName("main").assets.directories.add("../../web")
     buildTypes {
         release {
             optimization {

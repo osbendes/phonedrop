@@ -47,7 +47,10 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="phonedrop" android:host="pair" />
+                <data android:scheme="phonedrop" />
+                <data android:host="pair" />
+                <!-- Session code of a browser page (browser mode): phonedrop://web?v=3&k=... -->
+                <data android:host="web" />
             </intent-filter>
         </activity>
 
@@ -80,6 +83,12 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- Browser mode: the phone serves a page to a computer with nothing installed -->
+        <service
+            android:name=".WebService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <service
             android:name=".TransferService"

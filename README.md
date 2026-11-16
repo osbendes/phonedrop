@@ -20,6 +20,9 @@ file go straight from one device to the other over your own network: no cables, 
   choose a subfolder on the Mac for each batch.
 - **Mac to phone.** Drop files on the PhoneDrop window, or use Finder's right-click › Services or
   Open With. Press **Send** and the phone downloads them by itself.
+- **Nothing to install on the computer, if you prefer.** Tap **Use a browser** in the phone app, open
+  the address it shows in any browser on Windows, Mac or Linux, and scan the code on the page. Files
+  go both ways, encrypted, with no app on the computer.
 - **Works without a router.** If the two devices share no network, the phone finds the Mac over
   Bluetooth and connects to it directly. Files still travel over Wi-Fi.
 - **English and Turkish, light and dark.** Both follow the system, or pick them yourself in Settings.
@@ -94,10 +97,9 @@ The Mac app isn't notarized, so macOS blocks it the first time. To open it:
 
 PhoneDrop is released under the [MIT License](LICENSE).
 
-Third-party components:
-
-- [ZXing](https://github.com/zxing/zxing) core (Apache License 2.0): draws the QR code in the Android app.
-- Google Play services code scanner (ML Kit): scans the pairing QR code on Android. It is covered by Google's terms.
+Third-party components and trademarks are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+How the pieces fit together, and what is planned for iPhone and Windows, is in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -123,6 +125,9 @@ tür dosya, kendi ağın üzerinden bir cihazdan diğerine doğrudan gider: kabl
   uygulamadan seç. Her gönderim için Mac'te bir alt klasör seçebilirsin.
 - **Mac'ten telefona.** Dosyaları PhoneDrop penceresine bırak ya da Finder'da sağ tık › Hizmetler veya
   Birlikte Aç'ı kullan. **Gönder**'e bastığında telefon dosyaları kendiliğinden indirir.
+- **İstersen bilgisayara hiçbir şey kurma.** Telefondaki uygulamada **Tarayıcıyla aktar**'a dokun,
+  gösterdiği adresi Windows, Mac ya da Linux'ta herhangi bir tarayıcıda aç ve sayfadaki kodu okut.
+  Dosyalar iki yönde, şifreli olarak ve bilgisayarda uygulama olmadan gider.
 - **Modem olmadan da çalışır.** İki cihazın ortak bir ağı yoksa telefon Mac'i Bluetooth ile bulur ve
   ona doğrudan bağlanır. Dosyalar yine Wi-Fi üzerinden gider.
 - **Türkçe ve İngilizce, açık ve koyu tema.** İkisi de sistemi izler; istersen Ayarlar'dan kendin seçersin.
@@ -190,5 +195,6 @@ Açmak için:
 
 ### Lisans
 
-PhoneDrop, [MIT Lisansı](LICENSE) ile yayınlanmıştır. Kullanılan üçüncü taraf bileşenler yukarıda,
-İngilizce bölümde listelenmiştir.
+PhoneDrop, [MIT Lisansı](LICENSE) ile yayınlanmıştır. Üçüncü taraf bileşenler ve ticari
+markalar [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dosyasındadır. Parçaların nasıl birleştiği ve
+iPhone ile Windows için planlananlar [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) içindedir.

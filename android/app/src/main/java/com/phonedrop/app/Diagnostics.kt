@@ -15,10 +15,10 @@ import kotlin.concurrent.thread
 /**
  * Test hooks driven over adb, e.g.
  * `adb shell am start -n com.osbendes.phonedrop/com.phonedrop.app.MainActivity -a com.osbendes.phonedrop.DIAG_SEND`.
- * They only run on a paired phone that has USB debugging turned on.
+ * They exist only in builds made with `-Pdiag=true` (never in a release) and only run with USB debugging on.
  *
- * TR: adb üzerinden tetiklenen test kancaları (örnek komut yukarıda). Yalnızca USB hata ayıklaması açık,
- * eşleşmiş bir telefonda çalışır.
+ * TR: adb üzerinden tetiklenen test kancaları (örnek komut yukarıda). Yalnızca `-Pdiag=true` ile yapılan
+ * derlemelerde bulunur (yayın sürümünde asla) ve yalnızca USB hata ayıklaması açıkken çalışır.
  */
 object Diagnostics {
     private const val TAG = "PhoneDrop"
@@ -27,8 +27,25 @@ object Diagnostics {
     fun run(activity: MainActivity, intent: Intent?, prefs: Prefs) {
         val action = intent?.action?.takeIf { it.startsWith(PREFIX) } ?: return
         val adbOn = Settings.Global.getInt(activity.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1
-        if (!adbOn || !prefs.paired) return
+        if (!adbOn) return
         when (action.removePrefix(PREFIX)) {
+            // Browser mode without a camera: starts the host, or connects the page whose link is in `code`
+            // `--ei offer <MB>` offers a random file to the browser and logs its SHA-256
+            "WEB" -> when {
+                intent.hasExtra("code") -> activity.connectBrowser(intent.getStringExtra("code")!!)
+                intent.hasExtra("offer") -> thread {
+                    val file = File(activity.cacheDir, "web-diag-${intent.getIntExtra("offer", 1)}mb.bin")
+                    val buf = ByteArray(1 shl 20)
+                    val sha = java.security.MessageDigest.getInstance("SHA-256")
+                    file.outputStream().use { out ->
+                        repeat(intent.getIntExtra("offer", 1)) { SecureRandom().nextBytes(buf); out.write(buf); sha.update(buf) }
+                        out.write(7); sha.update(7)
+                    }
+                    Log.i(TAG, "diag: offering ${file.name} sha256=" + sha.digest().joinToString("") { "%02x".format(it) })
+                    WebShare.offer(activity, listOf(Uri.fromFile(file)))
+                }
+                else -> WebShare.start(activity)
+            }
             // Screenshots: sets language/theme (extras: lang, theme; "system" = follow the phone) and restarts the screen
             "LOOK" -> {
                 val sp = activity.getSharedPreferences(Look.PREFS, 0)

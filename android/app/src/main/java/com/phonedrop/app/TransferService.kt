@@ -51,6 +51,7 @@ object Transfers {
         val tempFile: File? = null,    // UP: copy made for non-seekable sources
         val fileId: String? = null,    // DOWN: id in the Mac's outbox
         val folder: String = "",       // UP: subfolder on the Mac
+        val web: Boolean = false,      // moved by browser mode (WebService), not by this queue
     ) {
         val key = nextKey.incrementAndGet()
         @Volatile var state = State.WAITING
@@ -279,14 +280,14 @@ class TransferService : Service() {
         worker = thread(name = "transfers") {
             try {
                 while (true) {
-                    val item = Transfers.items.firstOrNull { it.state == Transfers.State.WAITING } ?: break
+                    val item = Transfers.items.firstOrNull { it.state == Transfers.State.WAITING && !it.web } ?: break
                     run(item)
                 }
             } finally {
                 ticker.interrupt()
                 synchronized(this) { worker = null }
                 // Something may have been queued meanwhile
-                if (Transfers.items.any { it.state == Transfers.State.WAITING }) startWorker() else finishAll()
+                if (Transfers.items.any { it.state == Transfers.State.WAITING && !it.web }) startWorker() else finishAll()
             }
         }
     }
@@ -467,6 +468,7 @@ class TransferService : Service() {
             while (true) {
                 val now = System.nanoTime()
                 for (it in Transfers.items) {
+                    if (it.web) continue
                     if (it.state != Transfers.State.ACTIVE) { it.speed = 0.0; continue }
                     val s = it.sent.get()
                     val dt = (now - it.lastT) / 1e9

@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhoneDrop</title>
+<style>
+  :root { --bg:#fffbf0; --card:#fff; --fg:#2b2a28; --mute:#8a857a; --line:#efeae0; --acc:#ffd230; --tint:#fff4c7; --link:#735c00; --ok:#cdefe0; --onok:#1f6b4a; --err:#b4412f; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1f1d18; --card:#2a2720; --fg:#f5f0e1; --mute:#9e988a; --line:#38342b; --tint:#38342b; --link:#ffd230; --ok:#24402f; --onok:#7ccfa8; --err:#f2877b; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 ui-rounded,-apple-system,"Segoe UI",Roboto,system-ui,sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:26px; margin:0 0 16px; }
+  h2 { font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:var(--mute); margin:24px 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:20px; }
+  .center { text-align:center; }
+  .mute { color:var(--mute); font-size:14px; }
+  canvas { background:#fff; border-radius:16px; padding:0; width:240px; height:240px; image-rendering:pixelated; }
+  ol { text-align:left; padding-left:22px; margin:16px 0 8px; }
+  .chip { display:inline-block; background:var(--ok); color:var(--onok); font-weight:600; font-size:13px; padding:2px 12px; border-radius:999px; }
+  button { font:inherit; font-weight:600; color:#2b2a28; background:var(--acc); border:0; border-radius:999px; padding:10px 22px; cursor:pointer; }
+  button.soft { background:var(--tint); color:var(--fg); padding:6px 16px; font-size:14px; }
+  button:disabled { opacity:.45; cursor:default; }
+  #drop { border:2px dashed var(--acc); border-radius:20px; padding:28px 16px; text-align:center; background:linear-gradient(var(--bg),var(--tint)); }
+  #drop.over { border-style:solid; }
+  .row { display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line); }
+  .row:first-child { border-top:0; }
+  .plate { flex:none; width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:11px; font-weight:700; color:#2b2a28; background:#cdefe0; }
+  .grow { flex:1; min-width:0; }
+  .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+  .bar { height:6px; border-radius:999px; background:var(--tint); margin:6px 0 2px; overflow:hidden; }
+  .bar i { display:block; height:100%; width:0; background:var(--acc); border-radius:999px; }
+  .err { color:var(--err); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PhoneDrop</h1>
+
+  <section id="pair" class="card center">
+    <canvas id="qr" width="328" height="328"></canvas>
+    <ol>
+      <li data-t="step1"></li>
+      <li data-t="step2"></li>
+    </ol>
+    <p class="mute" data-t="private"></p>
+  </section>
+
+  <section id="app" hidden>
+    <span class="chip" id="peer"></span>
+    <h2 data-t="toPhone"></h2>
+    <div id="drop">
+      <p data-t="dropHere" style="margin:0 0 12px"></p>
+      <button id="pick" data-t="choose"></button>
+      <input id="file" type="file" multiple hidden>
+    </div>
+    <div id="ups" class="card" style="margin-top:12px" hidden></div>
+    <h2 data-t="fromPhone"></h2>
+    <div class="card">
+      <p id="none" class="mute" style="margin:0" data-t="nothing"></p>
+      <div id="downs"></div>
+      <button id="all" class="soft" style="margin-top:12px" data-t="getAll" hidden></button>
+    </div>
+    <p class="mute" data-t="keepOpen"></p>
+  </section>
+
+  <section id="lost" class="card center" hidden>
+    <p data-t="closed"></p>
+    <button onclick="sessionStorage.clear();location.reload()" data-t="again"></button>
+  </section>
+</main>
+<script>
+'use strict';
+/*CORE*/
+// ---- small helpers ----
+const enc = new TextEncoder(), dec = new TextDecoder();
+function b64u(b) { let s = ''; for (const x of b) s += String.fromCharCode(x); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function unb64u(s) { return Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)); }
+function cat(...a) { let n = 0; for (const x of a) n += x.length; const o = new Uint8Array(n); n = 0; for (const x of a) { o.set(x, n); n += x.length; } return o; }
+function hex(b) { return Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); }
+
+// ---- X25519 (RFC 7748). Keys are used once, so BigInt arithmetic is acceptable here ----
+const P = (1n << 255n) - 19n;
+function fmod(a) { a %= P; return a < 0n ? a + P : a; }
+function fpow(b, e) { let r = 1n; while (e > 0n) { if (e & 1n) r = r * b % P; b = b * b % P; e >>= 1n; } return r; }
+function x25519(k, u) {
+  const s = k.slice(); s[0] &= 248; s[31] &= 127; s[31] |= 64;
+  let kk = 0n, x1 = 0n;
+  for (let i = 31; i >= 0; i--) { kk = (kk << 8n) | BigInt(s[i]); x1 = (x1 << 8n) | BigInt(i === 31 ? u[i] & 127 : u[i]); }
+  x1 %= P;
+  let x2 = 1n, z2 = 0n, x3 = x1, z3 = 1n, swap = 0n;
+  for (let t = 254n; t >= 0n; t--) {
+    const kt = (kk >> t) & 1n;
+    if (swap ^ kt) { [x2, x3] = [x3, x2]; [z2, z3] = [z3, z2]; }
+    swap = kt;
+    const A = fmod(x2 + z2), AA = A * A % P, B = fmod(x2 - z2), BB = B * B % P, E = fmod(AA - BB);
+    const C = fmod(x3 + z3), D = fmod(x3 - z3), DA = D * A % P, CB = C * B % P;
+    x3 = fmod(DA + CB); x3 = x3 * x3 % P;
+    z3 = fmod(DA - CB); z3 = x1 * (z3 * z3 % P) % P;
+    x2 = AA * BB % P;
+    z2 = E * fmod(AA + 121665n * E) % P;
+  }
+  if (swap) { [x2, x3] = [x3, x2]; [z2, z3] = [z3, z2]; }
+  let r = x2 * fpow(z2, P - 2n) % P;
+  const o = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) { o[i] = Number(r & 255n); r >>= 8n; }
+  return o;
+}
+const BASE = new Uint8Array(32); BASE[0] = 9;
+
+// ---- SHA-256, HMAC, HKDF (RFC 5869, one 32-byte block) ----
+const SK = new Uint32Array(64);
+(() => { let n = 0; for (let c = 2; n < 64; c++) { let p = true; for (let d = 2; d * d <= c; d++) if (c % d === 0) { p = false; break; } if (p) SK[n++] = (Math.cbrt(c) % 1) * 4294967296; } })();
+function sha256(m) {
+  const h = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+  const len = m.length, total = ((len + 9 + 63) >> 6) << 6, d = new Uint8Array(total), w = new Uint32Array(64);
+  d.set(m); d[len] = 0x80;
+  const v = new DataView(d.buffer); v.setUint32(total - 8, Math.floor(len / 536870912)); v.setUint32(total - 4, (len << 3) >>> 0);
+  for (let o = 0; o < total; o += 64) {
+    for (let i = 0; i < 16; i++) w[i] = v.getUint32(o + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const a = w[i - 15], b = w[i - 2];
+      w[i] = (w[i - 16] + ((a >>> 7 | a << 25) ^ (a >>> 18 | a << 14) ^ (a >>> 3)) + w[i - 7] + ((b >>> 17 | b << 15) ^ (b >>> 19 | b << 13) ^ (b >>> 10))) >>> 0;
+    }
+    let [a, b, c, dd, e, f, g, hh] = h;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (hh + ((e >>> 6 | e << 26) ^ (e >>> 11 | e << 21) ^ (e >>> 25 | e << 7)) + ((e & f) ^ (~e & g)) + SK[i] + w[i]) >>> 0;
+      const t2 = (((a >>> 2 | a << 30) ^ (a >>> 13 | a << 19) ^ (a >>> 22 | a << 10)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+      hh = g; g = f; f = e; e = (dd + t1) >>> 0; dd = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    h[0] += a; h[1] += b; h[2] += c; h[3] += dd; h[4] += e; h[5] += f; h[6] += g; h[7] += hh;
+  }
+  const out = new Uint8Array(32), ov = new DataView(out.buffer);
+  for (let i = 0; i < 8; i++) ov.setUint32(i * 4, h[i]);
+  return out;
+}
+function hmac(key, msg) {
+  if (key.length > 64) key = sha256(key);
+  const ip = new Uint8Array(64).fill(0x36), op = new Uint8Array(64).fill(0x5c);
+  for (let i = 0; i < key.length; i++) { ip[i] ^= key[i]; op[i] ^= key[i]; }
+  return sha256(cat(op, sha256(cat(ip, msg))));
+}
+function hkdf(ikm, salt, info) { return hmac(hmac(salt, ikm), cat(enc.encode(info), new Uint8Array([1]))); }
+
+// ---- ChaCha20-Poly1305 (RFC 8439). Box = nonce(12) || ciphertext || tag(16) ----
+function chachaBlock(st, out) {
+  const x = out;
+  x.set(st);
+  for (let i = 0; i < 10; i++) {
+    qr(x, 0, 4, 8, 12); qr(x, 1, 5, 9, 13); qr(x, 2, 6, 10, 14); qr(x, 3, 7, 11, 15);
+    qr(x, 0, 5, 10, 15); qr(x, 1, 6, 11, 12); qr(x, 2, 7, 8, 13); qr(x, 3, 4, 9, 14);
+  }
+  for (let i = 0; i < 16; i++) x[i] += st[i];
+}
+function qr(x, a, b, c, d) {
+  x[a] += x[b]; let t = x[d] ^ x[a]; x[d] = t << 16 | t >>> 16;
+  x[c] += x[d]; t = x[b] ^ x[c]; x[b] = t << 12 | t >>> 20;
+  x[a] += x[b]; t = x[d] ^ x[a]; x[d] = t << 8 | t >>> 24;
+  x[c] += x[d]; t = x[b] ^ x[c]; x[b] = t << 7 | t >>> 25;
+}
+function chachaState(key, nonce, counter) {
+  const st = new Uint32Array(16), kv = new DataView(key.buffer, key.byteOffset, 32), nv = new DataView(nonce.buffer, nonce.byteOffset, 12);
+  st[0] = 0x61707865; st[1] = 0x3320646e; st[2] = 0x79622d32; st[3] = 0x6b206574;
+  for (let i = 0; i < 8; i++) st[4 + i] = kv.getUint32(i * 4, true);
+  st[12] = counter;
+  for (let i = 0; i < 3; i++) st[13 + i] = nv.getUint32(i * 4, true);
+  return st;
+}
+// XORs src into dst (same length) with the keystream starting at block 1
+function chachaXor(key, nonce, src, dst, dstOff) {
+  const st = chachaState(key, nonce, 1), blk = new Uint32Array(16), ks = new Uint8Array(blk.buffer);
+  for (let o = 0; o < src.length; o += 64) {
+    chachaBlock(st, blk); st[12]++;
+    const n = Math.min(64, src.length - o);
+    for (let i = 0; i < n; i++) dst[dstOff + o + i] = src[o + i] ^ ks[i];
+  }
+}
+// Poly1305 over full 16-byte blocks, with ten 13-bit limbs held in doubles
+function polyBlocks(h, r, m, off, len) {
+  const d = new Float64Array(10);
+  for (const end = off + len; off < end; off += 16) {
+    const t0 = m[off] | m[off + 1] << 8, t1 = m[off + 2] | m[off + 3] << 8, t2 = m[off + 4] | m[off + 5] << 8, t3 = m[off + 6] | m[off + 7] << 8;
+    const t4 = m[off + 8] | m[off + 9] << 8, t5 = m[off + 10] | m[off + 11] << 8, t6 = m[off + 12] | m[off + 13] << 8, t7 = m[off + 14] | m[off + 15] << 8;
+    h[0] += t0 & 0x1fff; h[1] += (t0 >>> 13 | t1 << 3) & 0x1fff; h[2] += (t1 >>> 10 | t2 << 6) & 0x1fff; h[3] += (t2 >>> 7 | t3 << 9) & 0x1fff;
+    h[4] += (t3 >>> 4 | t4 << 12) & 0x1fff; h[5] += (t4 >>> 1) & 0x1fff; h[6] += (t4 >>> 14 | t5 << 2) & 0x1fff; h[7] += (t5 >>> 11 | t6 << 5) & 0x1fff;
+    h[8] += (t6 >>> 8 | t7 << 8) & 0x1fff; h[9] += (t7 >>> 5) | 0x800;
+    for (let i = 0; i < 10; i++) {
+      let s = 0;
+      for (let j = 0; j <= i; j++) s += h[j] * r[i - j];
+      for (let j = i + 1; j < 10; j++) s += h[j] * r[i - j + 10] * 5;
+      d[i] = s;
+    }
+    let c = 0;
+    for (let i = 0; i < 10; i++) { const v = d[i] + c; c = Math.floor(v / 8192); h[i] = v - c * 8192; }
+    h[0] += c * 5; c = Math.floor(h[0] / 8192); h[0] -= c * 8192; h[1] += c;
+  }
+}
+function polyPadded(h, r, data) {
+  const full = data.length & ~15;
+  polyBlocks(h, r, data, 0, full);
+  if (full < data.length) { const last = new Uint8Array(16); last.set(data.subarray(full)); polyBlocks(h, r, last, 0, 16); }
+}
+function polyTag(key, nonce, aad, ct) {
+  const blk = new Uint32Array(16); chachaBlock(chachaState(key, nonce, 0), blk);
+  const otk = new Uint8Array(blk.buffer, 0, 32), rb = otk.slice(0, 16);
+  rb[3] &= 15; rb[7] &= 15; rb[11] &= 15; rb[15] &= 15; rb[4] &= 252; rb[8] &= 252; rb[12] &= 252;
+  const r = new Float64Array(10), rw = [];
+  for (let i = 0; i < 16; i += 2) rw.push(rb[i] | rb[i + 1] << 8);
+  r[0] = rw[0] & 0x1fff; r[1] = (rw[0] >>> 13 | rw[1] << 3) & 0x1fff; r[2] = (rw[1] >>> 10 | rw[2] << 6) & 0x1fff; r[3] = (rw[2] >>> 7 | rw[3] << 9) & 0x1fff;
+  r[4] = (rw[3] >>> 4 | rw[4] << 12) & 0x1fff; r[5] = (rw[4] >>> 1) & 0x1fff; r[6] = (rw[4] >>> 14 | rw[5] << 2) & 0x1fff; r[7] = (rw[5] >>> 11 | rw[6] << 5) & 0x1fff;
+  r[8] = (rw[6] >>> 8 | rw[7] << 8) & 0x1fff; r[9] = rw[7] >>> 5;
+  const h = new Float64Array(10);
+  polyPadded(h, r, aad); polyPadded(h, r, ct);
+  const lens = new Uint8Array(16), lv = new DataView(lens.buffer);
+  lv.setUint32(0, aad.length, true); lv.setUint32(8, ct.length >>> 0, true); lv.setUint32(12, Math.floor(ct.length / 4294967296), true);
+  polyBlocks(h, r, lens, 0, 16);
+  let H = 0n, S = 0n;
+  for (let i = 9; i >= 0; i--) H = (H << 13n) | BigInt(h[i]);
+  for (let i = 31; i >= 16; i--) S = (S << 8n) | BigInt(otk[i]);
+  let tag = (H % ((1n << 130n) - 5n) + S) & ((1n << 128n) - 1n);
+  const out = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) { out[i] = Number(tag & 255n); tag >>= 8n; }
+  return out;
+}
+function sealWith(key, nonce, plain, aad) {
+  const box = new Uint8Array(12 + plain.length + 16);
+  box.set(nonce);
+  chachaXor(key, nonce, plain, box, 12);
+  box.set(polyTag(key, nonce, aad, box.subarray(12, 12 + plain.length)), 12 + plain.length);
+  return box;
+}
+function seal(key, plain, aad) { return sealWith(key, crypto.getRandomValues(new Uint8Array(12)), plain, enc.encode(aad)); }
+function open(key, box, aad) {
+  if (box.length < 28) throw new Error('short box');
+  const nonce = box.subarray(0, 12), ct = box.subarray(12, box.length - 16), tag = polyTag(key, nonce, enc.encode(aad), ct);
+  let diff = 0;
+  for (let i = 0; i < 16; i++) diff |= tag[i] ^ box[box.length - 16 + i];
+  if (diff) throw new Error('bad box');
+  const plain = new Uint8Array(ct.length);
+  chachaXor(key, nonce, ct, plain, 0);
+  return plain;
+}
+
+// ---- QR code, version 4-L (33x33), byte mode, mask 0: enough for the pairing link ----
+function gmul(x, y) { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11d); z ^= ((y >>> i) & 1) * x; } return z; }
+function qrMatrix(text) {
+  const N = 33, DATA = 80, ECC = 20, bytes = enc.encode(text);
+  if (bytes.length > DATA - 2) throw new Error('too long');
+  const bits = [];
+  const put = (v, n) => { for (let i = n - 1; i >= 0; i--) bits.push((v >>> i) & 1); };
+  put(4, 4); put(bytes.length, 8); for (const b of bytes) put(b, 8);
+  put(0, Math.min(4, DATA * 8 - bits.length));
+  while (bits.length % 8) bits.push(0);
+  for (let pad = 0xec; bits.length < DATA * 8; pad ^= 0xec ^ 0x11) put(pad, 8);
+  const cw = [];
+  for (let i = 0; i < bits.length; i += 8) { let v = 0; for (let j = 0; j < 8; j++) v = v << 1 | bits[i + j]; cw.push(v); }
+  const div = new Array(ECC).fill(0); div[ECC - 1] = 1;
+  for (let i = 0, root = 1; i < ECC; i++) { for (let j = 0; j < ECC; j++) { div[j] = gmul(div[j], root); if (j + 1 < ECC) div[j] ^= div[j + 1]; } root = gmul(root, 2); }
+  const rem = new Array(ECC).fill(0);
+  for (const b of cw) { const f = b ^ rem.shift(); rem.push(0); for (let i = 0; i < ECC; i++) rem[i] ^= gmul(div[i], f); }
+  const all = cw.concat(rem);
+  const m = Array.from({ length: N }, () => new Array(N).fill(0)), fn = Array.from({ length: N }, () => new Array(N).fill(false));
+  const set = (x, y, v) => { m[y][x] = v ? 1 : 0; fn[y][x] = true; };
+  for (let i = 0; i < N; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  for (const [cx, cy] of [[3, 3], [N - 4, 3], [3, N - 4]])
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const x = cx + dx, y = cy + dy, dist = Math.max(Math.abs(dx), Math.abs(dy));
+      if (x >= 0 && x < N && y >= 0 && y < N) set(x, y, dist !== 2 && dist !== 4);
+    }
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(26 + dx, 26 + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+  const fdata = 1 << 3;   // error correction L, mask 0
+  let frem = fdata;
+  for (let i = 0; i < 10; i++) frem = (frem << 1) ^ ((frem >>> 9) * 0x537);
+  const fbits = (fdata << 10 | frem) ^ 0x5412, fb = i => (fbits >>> i) & 1;
+  for (let i = 0; i <= 5; i++) set(8, i, fb(i));
+  set(8, 7, fb(6)); set(8, 8, fb(7)); set(7, 8, fb(8));
+  for (let i = 9; i < 15; i++) set(14 - i, 8, fb(i));
+  for (let i = 0; i < 8; i++) set(N - 1 - i, 8, fb(i));
+  for (let i = 8; i < 15; i++) set(8, N - 15 + i, fb(i));
+  set(8, N - 8, 1);
+  let k = 0;
+  for (let right = N - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let vert = 0; vert < N; vert++) for (let j = 0; j < 2; j++) {
+      const x = right - j, y = ((right + 1) & 2) === 0 ? N - 1 - vert : vert;
+      if (fn[y][x]) continue;
+      const bit = k < all.length * 8 ? (all[k >>> 3] >>> (7 - (k & 7))) & 1 : 0;
+      k++;
+      m[y][x] = bit ^ ((x + y) % 2 === 0 ? 1 : 0);
+    }
+  }
+  return m;
+}
+/*END CORE*/
+
+// ---- texts ----
+const TR = (navigator.language || '').toLowerCase().startsWith('tr');
+const T = TR ? {
+  step1: 'Telefonunda PhoneDrop’u aç, “Tarayıcıyla aktar” kartında “Kodu okut”a dokun.', step2: 'Telefonu bu koda tut.',
+  private: 'Dosyalar telefon ile bu tarayıcı arasında şifreli gider; ağının dışına çıkmaz.',
+  toPhone: 'Telefona gönder', dropHere: 'Dosyaları buraya bırak', choose: 'Dosya seç', fromPhone: 'Telefondan gelenler',
+  nothing: 'Telefonda seçtiğin dosyalar burada görünür.', getAll: 'Tümünü indir', keepOpen: 'Aktarım bitene kadar bu sekmeyi ve telefondaki PhoneDrop’u açık tut.',
+  closed: 'Bağlantı kapandı.', again: 'Yeniden bağlan', connected: 'Bağlı: ', get: 'İndir', waiting: 'Sırada', sent: 'Gönderildi', saved: 'İndirildi', failed: 'Başarısız', retry: 'Yeniden dene',
+} : {
+  step1: 'Open PhoneDrop on your phone and tap “Scan code” on the “Use a browser” card.', step2: 'Point the phone at this code.',
+  private: 'Files travel encrypted between your phone and this browser; they never leave your network.',
+  toPhone: 'Send to phone', dropHere: 'Drop files here', choose: 'Choose files', fromPhone: 'From your phone',
+  nothing: 'Files you choose on the phone appear here.', getAll: 'Download all', keepOpen: 'Keep this tab and PhoneDrop on the phone open until transfers finish.',
+  closed: 'The connection was closed.', again: 'Connect again', connected: 'Connected: ', get: 'Download', waiting: 'Queued', sent: 'Sent', saved: 'Downloaded', failed: 'Failed', retry: 'Try again',
+};
+document.documentElement.lang = TR ? 'tr' : 'en';
+for (const el of document.querySelectorAll('[data-t]')) el.textContent = T[el.dataset.t];
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function size(n) { const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (n >= 1000 && i < 3) { n /= 1000; i++; } return (i ? n.toFixed(n < 10 ? 1 : 0) : n) + ' ' + u[i]; }
+const TYPES = { image: ['#cfe6f7', 'jpg jpeg png heic heif gif webp dng raw bmp svg'], video: ['#f9d5df', 'mp4 mov mkv avi webm 3gp m4v'], audio: ['#ffd9c7', 'mp3 wav m4a flac ogg aac opus'], arch: ['#e1daf7', 'zip rar 7z tar gz apk dmg iso exe msi'] };
+function row(name, sub) {
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+  const el = document.createElement('div'); el.className = 'row';
+  const plate = document.createElement('div'); plate.className = 'plate'; plate.textContent = ext.slice(0, 4).toUpperCase();
+  for (const k in TYPES) if (TYPES[k][1].split(' ').includes(ext)) plate.style.background = TYPES[k][0];
+  const g = document.createElement('div'); g.className = 'grow';
+  const n = document.createElement('div'); n.className = 'name'; n.textContent = name;
+  const bar = document.createElement('div'); bar.className = 'bar'; bar.hidden = true; bar.appendChild(document.createElement('i'));
+  const s = document.createElement('div'); s.className = 'mute'; s.textContent = sub;
+  g.append(n, bar, s); el.append(plate, g);
+  return { el, sub: s, progress(p) { bar.hidden = false; bar.firstChild.style.width = (p * 100).toFixed(1) + '%'; }, done() { bar.hidden = true; } };
+}
+
+// ---- session ----
+let K = null, SID = '', closed = false, counter = Date.now() * 1000;
+function lost() { closed = true; sessionStorage.clear(); $('pair').hidden = $('app').hidden = true; $('lost').hidden = false; }
+async function call(method, target, body) {
+  const auth = b64u(seal(K, enc.encode(method + ' ' + target + ' ' + (++counter)), 'pd3 auth'));
+  const r = await fetch(target, { method, headers: { 'X-PD-Session': SID, 'X-PD-Auth': auth }, body, cache: 'no-store' });
+  if (r.status === 403) { lost(); throw new Error('closed'); }
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r;
+}
+async function rpc(path, query, obj) {
+  const body = obj ? seal(K, enc.encode(JSON.stringify(obj)), 'pd3 req ' + path) : null;
+  const r = await call('POST', path + (query || ''), body);
+  return JSON.parse(dec.decode(open(K, new Uint8Array(await r.arrayBuffer()), 'pd3 res ' + path)));
+}
+async function retrying(fn) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); } catch (e) { if (closed || i >= 5) throw e; await sleep(500 << i); }
+  }
+}
+
+async function pair() {
+  const saved = sessionStorage.getItem('pd');
+  if (saved) {
+    const s = JSON.parse(saved); K = unb64u(s.k); SID = s.sid;
+    try { await rpc('/w/list'); return start(s.name); } catch (e) { if (closed) { closed = false; $('lost').hidden = true; $('pair').hidden = false; } sessionStorage.clear(); }
+  }
+  const priv = crypto.getRandomValues(new Uint8Array(32)), pub = x25519(priv, BASE);
+  SID = hex(sha256(pub).subarray(0, 8));
+  const link = 'phonedrop://web?v=3&k=' + b64u(pub), m = qrMatrix(link), cv = $('qr'), g = cv.getContext('2d'), q = 4, sc = cv.width / (m.length + 2 * q);
+  cv.dataset.link = link;   // the same public text the code holds, for tools that can't see pixels
+  g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = '#000';
+  m.forEach((line, y) => line.forEach((v, x) => { if (v) g.fillRect((x + q) * sc, (y + q) * sc, sc, sc); }));
+  for (;;) {
+    try {
+      const r = await fetch('/w/session?id=' + SID, { cache: 'no-store' });
+      if (r.ok) {
+        const j = await r.json(), A = unb64u(j.a), shared = x25519(priv, A);
+        if (shared.some(x => x)) {
+          K = hkdf(shared, cat(A, pub), 'phonedrop web v3');
+          const info = JSON.parse(dec.decode(open(K, unb64u(j.c), 'pd3 hello')));
+          sessionStorage.setItem('pd', JSON.stringify({ k: b64u(K), sid: SID, name: info.name }));
+          return start(info.name);
+        }
+      }
+    } catch (e) { /* not scanned yet, or the phone is unreachable: keep waiting */ }
+    await sleep(1000);
+  }
+}
+
+function start(name) {
+  $('pair').hidden = true; $('app').hidden = false; $('peer').textContent = T.connected + name;
+  poll();
+}
+
+// ---- phone -> browser ----
+const shown = new Map();
+async function poll() {
+  while (!closed) {
+    try {
+      const files = (await rpc('/w/list')).files;
+      for (const f of files) if (!shown.has(f.id)) {
+        const r = row(f.name, size(f.size)), b = document.createElement('button');
+        b.className = 'soft'; b.textContent = T.get; b.onclick = () => download(f);
+        r.el.appendChild(b); $('downs').appendChild(r.el);
+        shown.set(f.id, { f, r, b, state: 'new' });
+      }
+      for (const [id, s] of shown) if (s.state === 'new' && !files.some(f => f.id === id)) { s.r.el.remove(); shown.delete(id); }
+      $('none').hidden = shown.size > 0;
+      $('all').hidden = [...shown.values()].filter(s => s.state === 'new').length < 2;
+    } catch (e) { /* retried on the next round */ }
+    await sleep(2000);
+  }
+}
+$('all').onclick = () => { for (const s of shown.values()) if (s.state === 'new') download(s.f); };
+let downloading = Promise.resolve();
+function download(f) {
+  const s = shown.get(f.id);
+  if (!s || (s.state !== 'new' && s.state !== 'failed')) return;
+  s.state = 'queued'; s.b.hidden = true; s.r.sub.className = 'mute'; s.r.sub.textContent = T.waiting + ' · ' + size(f.size);
+  downloading = downloading.then(() => fetchFile(s)).catch(() => { });
+}
+async function fetchFile(s) {
+  const f = s.f, parts = [];
+  let frame = 0, got = 0;
+  try {
+    await retrying(async () => {
+      const r = await call('GET', '/w/dl?f=' + f.id + '&from=' + frame), rd = r.body.getReader();
+      let buf = new Uint8Array(0);
+      for (;;) {
+        const { done, value } = await rd.read();
+        if (value) {
+          buf = buf.length ? cat(buf, value) : value;
+          let o = 0;
+          while (buf.length - o >= 4) {
+            const n = (buf[o] << 24 | buf[o + 1] << 16 | buf[o + 2] << 8 | buf[o + 3]) >>> 0;
+            if (n > (1 << 20) + 28) throw new Error('bad frame');
+            if (buf.length - o < 4 + n) break;
+            const plain = open(K, buf.subarray(o + 4, o + 4 + n), 'pd3 dl ' + f.id + ' ' + frame);
+            parts.push(new Blob([plain])); frame++; got += plain.length; o += 4 + n;
+            s.r.progress(f.size ? got / f.size : 1); s.r.sub.textContent = size(got) + ' / ' + size(f.size);
+            await sleep(0);   // let the page repaint
+          }
+          buf = buf.slice(o);
+        }
+        if (done) break;
+      }
+      if (got < f.size) throw new Error('incomplete');
+    });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(parts, { type: 'application/octet-stream' })); a.download = f.name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    s.state = 'done'; s.r.done(); s.r.sub.textContent = '✓ ' + T.saved + ' · ' + size(f.size);
+  } catch (e) {
+    s.state = 'failed'; s.r.done(); s.r.sub.className = 'err'; s.r.sub.textContent = T.failed; s.b.textContent = T.retry; s.b.hidden = false;
+  }
+}
+
+// ---- browser -> phone ----
+const CHUNK = 2 << 20;
+let uploading = Promise.resolve();
+function send(files) {
+  for (const file of files) {
+    const r = row(file.name, T.waiting + ' · ' + size(file.size));
+    $('ups').hidden = false; $('ups').appendChild(r.el);
+    uploading = uploading.then(() => upload(file, r)).catch(() => { });
+  }
+}
+async function upload(file, r) {
+  try {
+    const id = (await retrying(() => rpc('/w/up/init', '', { name: file.name, size: file.size, mtime: file.lastModified }))).id;
+    for (let i = 0, o = 0; o < file.size || i === 0; i++, o += CHUNK) {
+      const box = seal(K, new Uint8Array(await file.slice(o, o + CHUNK).arrayBuffer()), 'pd3 up ' + id + ' ' + i);
+      await retrying(() => call('PUT', '/w/up/chunk?id=' + id + '&i=' + i, box));
+      const done = Math.min(file.size, o + CHUNK);
+      r.progress(file.size ? done / file.size : 1); r.sub.textContent = size(done) + ' / ' + size(file.size);
+    }
+    await retrying(() => rpc('/w/up/finish', '?id=' + id));
+    r.done(); r.sub.textContent = '✓ ' + T.sent + ' · ' + size(file.size);
+  } catch (e) { r.done(); r.sub.className = 'err'; r.sub.textContent = T.failed; }
+}
+$('pick').onclick = () => $('file').click();
+$('file').onchange = e => { send(e.target.files); e.target.value = ''; };
+const drop = $('drop');
+addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+addEventListener('dragleave', () => drop.classList.remove('over'));
+addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); if (K && !closed) send(e.dataTransfer.files); });
+
+pair();
+</script>
+</body>
+</html>

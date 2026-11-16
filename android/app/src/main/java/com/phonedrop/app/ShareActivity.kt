@@ -23,6 +23,10 @@ class ShareActivity : Activity() {
         val uris = extractUris(intent)
         when {
             uris.isEmpty() -> Toast.makeText(this, R.string.toast_no_files, Toast.LENGTH_SHORT).show()
+            WebShare.linked -> {
+                WebShare.offer(this, uris)
+                Toast.makeText(this, R.string.web_toast_offered, Toast.LENGTH_SHORT).show()
+            }
             !Prefs(this).paired -> {
                 Toast.makeText(this, R.string.toast_pair_first, Toast.LENGTH_LONG).show()
                 startActivity(Intent(this, MainActivity::class.java))

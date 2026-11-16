@@ -128,3 +128,57 @@ the app downloads everything as soon as it is opened and sees that flag. A Mac t
 trigger the scan, but the phone only ever talks to its own Mac, so nothing is downloaded.
 
 All characteristic and service UUIDs share the suffix `-9D4B-4F2A-8E61-50484F4E4544`.
+
+## Web sessions (protocol v3, browser mode)
+
+The phone is the server here, and a browser page is the client. Nothing is installed on the computer
+and no key is stored: each session has its own.
+
+### Handshake
+
+1. The phone listens on port 8765 (or a free port) and shows its address. `GET /` returns the page.
+2. The page makes an X25519 key pair `(b, B)` and shows a QR code with
+   `phonedrop://web?v=3&k=<base64url B>`. Its session id is `sid = hex(SHA-256(B)[0..8])`.
+3. The phone scans the code, makes its own pair `(a, A)` and computes
+   `K = HKDF-SHA256(ikm = X25519(a, B), salt = A || B, info = "phonedrop web v3")` (32 bytes).
+   A new scan replaces the previous session.
+4. The page polls `GET /w/session?id=<sid>` (404 until scanned) and gets
+   `{"a": <base64url A>, "c": <base64url box>}`. It computes the same `K` from `X25519(b, A)` and
+   opens `c` (AAD `pd3 hello`), which holds `{"name": <phone name>}`. If `A` was changed on the way,
+   the box doesn't open and nothing connects.
+
+`B` reaches the phone through the camera, not the network, so only the browser that displayed the
+code ends up with `K`.
+
+### Boxes and request authentication
+
+Boxes are ChaCha20-Poly1305 (RFC 8439): `nonce(12) || ciphertext || tag(16)`, random nonce, with an
+AAD string as in v2 but prefixed `pd3`.
+
+Every request except `GET /` and `GET /w/session` carries
+
+- `X-PD-Session: <sid>`
+- `X-PD-Auth: base64url(box("<METHOD> <path?query> <n>", AAD "pd3 auth"))`
+
+where `n` is a number the page never repeats. The phone refuses an `n` it has seen, anything that
+doesn't match the request line, and anything it can't open, with `403`.
+
+### Endpoints
+
+| Request | Body | Response |
+|---|---|---|
+| `POST /w/list` | – | box (AAD `pd3 res /w/list`) of `{"files": [{"id", "name", "size"}]}`: what the phone offers |
+| `GET /w/dl?f=<id>&from=<frame>` | – | frames `length(4, big-endian) || box`; each box is up to 1 MiB of the file, AAD `pd3 dl <id> <frame>` |
+| `POST /w/up/init` | box (AAD `pd3 req /w/up/init`) of `{"name", "size", "mtime"}` | box of `{"id"}` |
+| `PUT /w/up/chunk?id=<id>&i=<i>` | box of up to 2 MiB, AAD `pd3 up <id> <i>` | box of `{"ok": true}`; chunks go in order, a repeated chunk is accepted as a retry, any other order gets `409` |
+| `POST /w/up/finish?id=<id>` | – | box of `{"name"}`; `409` if bytes are missing |
+| `POST /w/up/cancel?id=<id>` | – | box of `{"ok": true}` |
+
+Uploaded files are saved to `Downloads/PhoneDrop` on the phone. File names are stripped of path
+parts before use.
+
+### What this does and doesn't protect against
+
+Anyone listening on the network sees only ciphertext, and nobody without the scanned key can list,
+fetch or upload files. The page itself is delivered over plain HTTP, so an attacker who can modify
+traffic on the same network could replace it; see [ARCHITECTURE.md](ARCHITECTURE.md).

@@ -183,6 +183,7 @@ struct MenuContent: View {
                 .pickerStyle(.menu)
                 Divider()
                 Button(L("Reset Pairing…")) { confirmReset() }
+                Button(L("About PhoneDrop…")) { showAbout() }
                 Divider()
                 Button(L("Quit PhoneDrop")) { NSApp.terminate(nil) }
             } label: {
@@ -208,6 +209,19 @@ struct MenuContent: View {
             Button(L("Pair Another")) { PairWindow.show(appQR: false) }.buttonStyle(PillButton())
         }
         .card(padding: 10)
+    }
+
+    private func showAbout() {
+        let alert = NSAlert()
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        alert.messageText = "PhoneDrop \(version)"
+        alert.informativeText = L("Free and open source, under the MIT License. © 2026 osbendes.\n\nNo accounts, no servers, no ads, no tracking: files go straight between your devices, encrypted.\n\nPhoneDrop is not affiliated with Apple, Google or Microsoft; their product names are their trademarks.")
+        alert.addButton(withTitle: L("Done"))
+        alert.addButton(withTitle: L("Source Code"))
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertSecondButtonReturn {
+            NSWorkspace.shared.open(URL(string: "https://github.com/osbendes/phonedrop")!)
+        }
     }
 
     private func confirmReset() {
